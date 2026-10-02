@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120a24">
+<title>The Alchemist's Cauldron</title>
+
+<!-- Three.js r160 – the only external dependency (code only, no assets). -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Theme                                                              */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #120a24;
+    --panel: rgba(24, 14, 46, 0.80);
+    --panel-border: rgba(190, 160, 255, 0.28);
+    --gold: #f5c76a;
+    --text: #efe8ff;
+    --muted: #a99ccc;
+    --good: #7dffb0;
+    --bad: #ff6b7a;
+    --font-display: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Layout: 3D stage on top, ingredient shelf below                    */
+  /* ------------------------------------------------------------------ */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  #stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Soft vignette over the canvas, below the HUD. */
+  #stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 55%, transparent 55%, rgba(5, 2, 14, 0.6) 100%);
+  }
+
+  #loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    z-index: 1;
+    transition: opacity 0.6s;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  #loading.error  { color: var(--bad); }
+
+  /* ------------------------------------------------------------------ */
+  /*  HUD: title, recipe, mistakes                                       */
+  /* ------------------------------------------------------------------ */
+  #hud {
+    position: absolute;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    z-index: 2;
+    width: min(300px, calc(100% - 24px));
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  #hud h1 {
+    margin: 0 0 2px;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+    color: var(--gold);
+  }
+
+  #hud .hint {
+    margin: 0 0 10px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  #recipe {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #recipe li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    transition: background 0.3s, border-color 0.3s, color 0.3s, opacity 0.3s;
+  }
+
+  #recipe .num {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.09);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  #recipe .emoji { font-size: 1.15rem; line-height: 1; }
+  #recipe .name  { font-size: 0.92rem; }
+
+  /* Current step glows gold. */
+  #recipe li.current {
+    color: var(--text);
+    border-color: var(--gold);
+    background: rgba(245, 199, 106, 0.14);
+    animation: stepPulse 1.6s ease-in-out infinite;
+  }
+  #recipe li.current .num { background: var(--gold); color: #2a1500; }
+
+  /* Completed steps are struck through. */
+  #recipe li.done { opacity: 0.55; }
+  #recipe li.done .name { text-decoration: line-through; }
+  #recipe li.done .num { background: rgba(125, 255, 176, 0.25); color: var(--good); }
+
+  @keyframes stepPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(245, 199, 106, 0.2); }
+    50%      { box-shadow: 0 0 18px rgba(245, 199, 106, 0.55); }
+  }
+
+  #mistakes {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--panel-border);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  #mistakes .pips { display: flex; gap: 4px; }
+  #mistakes .pip  { font-size: 1.1rem; line-height: 1; filter: grayscale(1); opacity: 0.3; transition: opacity 0.3s, filter 0.3s; }
+  #mistakes .pip.hit { filter: none; opacity: 1; animation: pipHit 0.5s ease-out; }
+  #mistakes .count { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text); }
+
+  @keyframes pipHit {
+    0%   { transform: scale(2.2) rotate(-20deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Toast                                                              */
+  /* ------------------------------------------------------------------ */
+  #toast {
+    position: absolute;
+    left: 50%;
+    top: 13%;                          /* upper centre: readable without hiding the cauldron mouth */
+    z-index: 3;
+    max-width: min(92%, 540px);
+    padding: 12px 22px;
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    background: rgba(20, 10, 40, 0.9);
+    font-size: clamp(1rem, 2.6vw, 1.3rem);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #toast.good { border-color: var(--good); }
+  #toast.bad  { border-color: var(--bad); box-shadow: 0 0 24px rgba(255, 107, 122, 0.3); }
+
+  /* ------------------------------------------------------------------ */
+  /*  Ingredient shelf                                                   */
+  /* ------------------------------------------------------------------ */
+  #shelf {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(#1a0f33, #0f0820);
+    border-top: 1px solid var(--panel-border);
+  }
+
+  .ingredient {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 92px;
+    min-height: 64px;
+    padding: 6px 10px;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s, background 0.2s, border-color 0.2s, opacity 0.2s;
+  }
+  .ingredient .emoji { font-size: 1.7rem; line-height: 1; }
+  .ingredient .name  { font-size: 0.72rem; line-height: 1.15; text-align: center; }
+
+  .ingredient:hover    { background: rgba(255, 255, 255, 0.13); border-color: var(--gold); transform: translateY(-2px); }
+  .ingredient:active   { transform: scale(0.95); }
+  .ingredient:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .ingredient.used::after {
+    content: "✓";
+    position: absolute;
+    top: 3px;
+    right: 7px;
+    font-size: 0.75rem;
+    color: var(--good);
+  }
+  .ingredient:disabled { opacity: 0.45; cursor: default; transform: none; border-color: var(--panel-border); }
+
+  /* ------------------------------------------------------------------ */
+  /*  Win / lose overlays                                                */
+  /* ------------------------------------------------------------------ */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(8, 4, 20, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: fadeIn 0.5s ease both;
+  }
+  .overlay[hidden] { display: none; }
+
+  .card {
+    width: 100%;
+    max-width: 420px;
+    padding: 28px 24px;
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(48, 28, 92, 0.96), rgba(20, 10, 44, 0.96));
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: cardIn 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  }
+  .card.win  { border-color: var(--gold); box-shadow: 0 0 70px rgba(245, 199, 106, 0.35); }
+  .card.lose { border-color: var(--bad);  box-shadow: 0 0 70px rgba(255, 107, 122, 0.25); }
+  .card .big { font-size: 3.4rem; line-height: 1; }
+  .card h2   { margin: 10px 0 6px; font-family: var(--font-display); font-size: 1.8rem; }
+  .card p    { margin: 0 0 22px; color: var(--muted); line-height: 1.45; }
+
+  .btn {
+    min-height: 48px;
+    padding: 12px 30px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(#ffe08a, #f0a93a);
+    color: #2a1500;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: 0 6px 20px rgba(240, 169, 58, 0.35);
+    transition: transform 0.12s, filter 0.2s;
+  }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn:active { transform: scale(0.97); }
+  .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(24px) scale(0.92); } to { opacity: 1; transform: none; } }
+
+  /* ------------------------------------------------------------------ */
+  /*  Responsive tweaks                                                  */
+  /* ------------------------------------------------------------------ */
+  /* Phones in portrait: HUD becomes a compact strip, shelf is a 4-up grid. */
+  @media (max-width: 640px) {
+    #hud { right: max(8px, env(safe-area-inset-right)); left: max(8px, env(safe-area-inset-left)); top: max(8px, env(safe-area-inset-top)); width: auto; padding: 10px 12px; }
+    #hud h1 { font-size: 1rem; }
+    #hud .hint { display: none; }
+    #recipe { display: flex; flex-wrap: wrap; gap: 5px; }
+    #recipe li { padding: 5px 8px; gap: 6px; }
+    #recipe .name { font-size: 0.78rem; }
+    #mistakes { margin-top: 8px; padding-top: 8px; }
+    #toast { top: auto; bottom: 16px; transform: translate(-50%, 0) scale(0.92); }
+    #toast.show { transform: translate(-50%, 0) scale(1); }
+    #shelf { gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .ingredient { flex: 0 0 calc(25% - 5px); min-width: 0; padding: 6px 4px; }
+  }
+
+  /* Short landscape screens: keep the 3D view as tall as possible. */
+  @media (max-height: 520px) {
+    #hud { padding: 8px 10px; width: min(260px, calc(100% - 24px)); }
+    #hud h1 { font-size: 0.95rem; }
+    #hud .hint { display: none; }
+    #recipe { gap: 3px; }
+    #recipe li { padding: 3px 8px; }
+    #mistakes { margin-top: 6px; padding-top: 6px; }
+    #shelf { gap: 6px; padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+    .ingredient { flex-direction: row; gap: 6px; min-width: 0; min-height: 44px; padding: 4px 10px; }
+    .ingredient .emoji { font-size: 1.3rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #recipe li.current, .overlay, .card { animation: none; }
+  }
+</style>
+</head>
+
+<body>
+<div id="app">
+  <main id="stage">
+    <canvas id="scene" aria-label="A bubbling alchemist's cauldron on a wooden table"></canvas>
+    <div id="loading">Conjuring the cauldron…</div>
+
+    <aside id="hud">
+      <h1>⚗️ The Alchemist's Cauldron</h1>
+      <p class="hint">Add the ingredients in this exact order.</p>
+      <ol id="recipe" aria-label="Recipe"></ol>
+      <div id="mistakes" aria-live="polite">
+        <span>Mistakes</span>
+        <span class="pips" aria-hidden="true"><i class="pip">💀</i><i class="pip">💀</i><i class="pip">💀</i></span>
+        <span class="count" id="mistake-count">0 / 3</span>
+      </div>
+    </aside>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <nav id="shelf" aria-label="Ingredient shelf"></nav>
+</div>
+
+<div id="overlay-win" class="overlay" hidden>
+  <div class="card win" role="dialog" aria-modal="true" aria-labelledby="win-title">
+    <div class="big">🧪✨</div>
+    <h2 id="win-title">The Elixir Is Brewed!</h2>
+    <p id="win-text"></p>
+    <button class="btn" data-restart>Brew Again</button>
+  </div>
+</div>
+
+<div id="overlay-lose" class="overlay" hidden>
+  <div class="card lose" role="dialog" aria-modal="true" aria-labelledby="lose-title">
+    <div class="big">💥💀</div>
+    <h2 id="lose-title">The Brew Is Ruined!</h2>
+    <p>Three mishaps were three too many. The cauldron needs a good scrub before you can try again.</p>
+    <button class="btn" data-restart>Try Again</button>
+  </div>
+</div>
+
+<!-- If Three.js cannot be fetched, the module below never runs; tell the player. -->
+<script>
+  setTimeout(function () {
+    if (window.__alchemistBooted) return;
+    var el = document.getElementById('loading');
+    el.classList.add('error');
+    el.textContent = 'Still conjuring… if this persists, check your connection (Three.js is loaded from unpkg.com).';
+  }, 8000);
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =====================================================================
+ *  1. GAME DATA
+ * ===================================================================== */
+
+const MAX_MISTAKES = 3;
+
+/** The one and only correct sequence (ingredient ids). */
+const RECIPE = ['moonpetal', 'elf-ear', 'glowcap', 'fairy-dust', 'crystal-shard'];
+
+/**
+ * Ingredient catalogue. `build(mat)` returns the 3D object that falls into the
+ * cauldron; `mat` is the main material, built from `color`.
+ */
+const INGREDIENTS = [
+  { id: 'moonpetal', name: 'Moonpetal', emoji: '🌸', color: 0xaee4ff,
+    build: (mat) => new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 16), mat) },
+
+  { id: 'elf-ear', name: 'Elf Ear', emoji: '🧝', color: 0xff8fc0,
+    build: (mat) => {
+      const m = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.62, 20), mat);
+      m.rotation.z = 0.5;
+      return m;
+    } },
+
+  { id: 'glowcap', name: 'Glowcap', emoji: '🍄', color: 0xe8333f,
+    build: (mat) => {                                  // red cap (hemisphere) + pale stem
+      const g = new THREE.Group();
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.31, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat);
+      cap.position.y = 0.06;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.3, 14), makeMaterial(0xf3e6c8));
+      stem.position.y = -0.09;
+      const spotMat = makeMaterial(0xffffff, { glow: 0.6 });
+      for (const [x, y, z] of [[0.12, 0.27, 0.08], [-0.1, 0.25, 0.14], [0.02, 0.33, -0.1]]) {
+        const spot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), spotMat);
+        spot.position.set(x, y, z);
+        g.add(spot);
+      }
+      g.add(cap, stem);
+      return g;
+    } },
+
+  { id: 'fairy-dust', name: 'Fairy Dust', emoji: '✨', color: 0xffd24a, flat: true,
+    build: (mat) => new THREE.Mesh(new THREE.OctahedronGeometry(0.3), mat) },
+
+  { id: 'crystal-shard', name: 'Crystal Shard', emoji: '💎', color: 0x4de8ff, flat: true,
+    build: (mat) => {
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.27), mat);
+      m.scale.y = 1.5;
+      return m;
+    } },
+
+  { id: 'dragon-scale', name: 'Dragon Scale', emoji: '🐉', color: 0x4ccf5a, flat: true,
+    build: (mat) => new THREE.Mesh(new THREE.TetrahedronGeometry(0.36), mat) },
+
+  { id: 'phoenix-feather', name: 'Phoenix Feather', emoji: '🪶', color: 0xff8a2a,
+    build: (mat) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.025, 0.85, 12), mat);
+      m.scale.z = 0.4;                                 // flatten into a blade
+      return m;
+    } },
+
+  { id: 'toad-eye', name: 'Toad Eye', emoji: '👁️', color: 0xb7e02e,
+    build: (mat) => {
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 16), mat));
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 }));
+      pupil.position.z = 0.2;
+      g.add(pupil);
+      return g;
+    } },
+
+  { id: 'mandrake-root', name: 'Mandrake Root', emoji: '🌿', color: 0x9a6a3a, glow: 0.4,
+    build: (mat) => {
+      const m = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.65, 16), mat);
+      m.rotation.x = Math.PI;                          // tapering root points down
+      return m;
+    } },
+
+  { id: 'unicorn-hair', name: 'Unicorn Hair', emoji: '🦄', color: 0xffffff,
+    build: (mat) => new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.95, 8), mat) },
+
+  { id: 'shadow-moss', name: 'Shadow Moss', emoji: '🌑', color: 0x2b6b43, glow: 0.7,
+    build: (mat) => new THREE.Mesh(new THREE.SphereGeometry(0.27, 14, 10), mat) },
+
+  { id: 'bat-wing', name: 'Bat Wing', emoji: '🦇', color: 0x7a4ab8, glow: 0.5,
+    build: (mat) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.4), mat);
+      m.rotation.set(0.3, 0, 0.2);
+      return m;
+    } },
+];
+
+const INGREDIENT_BY_ID = Object.fromEntries(INGREDIENTS.map((i) => [i.id, i]));
+
+/**
+ * Mishaps – picked at random when a wrong ingredient is added.
+ *  color/count/speed/shake/liquid come straight from the brief; the rest tunes
+ *  how the burst moves: gravity (negative = falls), drag, size, life range,
+ *  spread (horizontal factor), lift (vertical factor), swirl (rad/s curl).
+ */
+const MISHAPS = [
+  { id: 'smoke',   message: '💨 The cauldron belches green smoke!',
+    color: 0x6bff6b, count: 190, speed: 2.4, shake: 0.10, liquid: 0x1b5e20,
+    gravity: 0.6, drag: 1.6, size: 0.30, life: [1.4, 2.6] },
+
+  { id: 'sparks',  message: '🔥 Sparks fly everywhere!',
+    color: 0xff9a2a, count: 220, speed: 3.8, shake: 0.28, liquid: 0xb34a00,
+    gravity: -7, drag: 0.3, size: 0.09, life: [0.8, 1.6] },
+
+  { id: 'sludge',  message: '🫧 The brew turns to black sludge…',
+    color: 0x6a35a8, count: 90, speed: 1.1, shake: 0.05, liquid: 0x050505,
+    gravity: -1.5, drag: 1.0, size: 0.30, life: [1.5, 2.5] },
+
+  { id: 'glitter', message: '🎀 A puff of pink glitter explodes!',
+    color: 0xff7ad9, count: 240, speed: 3.0, shake: 0.16, liquid: 0xd1189a,
+    gravity: -2.5, drag: 0.5, size: 0.10, life: [1.0, 2.0] },
+
+  { id: 'troll',   message: '👹 It howls like a wounded troll!',
+    color: 0xff3b2e, count: 150, speed: 2.2, shake: 0.48, liquid: 0x7a0c0c,
+    gravity: 0.3, drag: 1.0, size: 0.22, life: [1.0, 2.0] },
+
+  { id: 'frost',   message: '❄️ Frost creeps over the rim!',
+    color: 0xbfeaff, count: 170, speed: 1.7, shake: 0.08, liquid: 0x8fe3ff,
+    gravity: -0.8, drag: 1.2, size: 0.14, life: [1.4, 2.4], spread: 1.5, lift: 0.5 },
+
+  { id: 'vortex',  message: '🌪️ A tiny vortex spins up dust!',
+    color: 0xb36bff, count: 200, speed: 2.6, shake: 0.22, liquid: 0x4a1a8a,
+    gravity: 0.4, drag: 0.6, size: 0.14, life: [1.2, 2.2], swirl: 3.5 },
+
+  { id: 'toad',    message: '🐸 A huge bubble pops and croaks!',
+    color: 0xc8e03a, count: 130, speed: 2.0, shake: 0.14, liquid: 0x6b7a14,
+    gravity: -3, drag: 0.8, size: 0.20, life: [1.0, 1.8] },
+];
+
+const MISHAP_LIQUID_SECONDS = 3.2;   // how long a mishap tints the liquid
+const LIQUID_START = 0x35b39a;       // calm teal brew
+const LIQUID_WIN   = 0xffd96a;       // finished elixir
+const LIQUID_LOSE  = 0x120708;       // ruined brew
+
+
+/* =====================================================================
+ *  2. SMALL HELPERS
+ * ===================================================================== */
+
+const rand  = (a, b) => a + Math.random() * (b - a);
+const clamp = THREE.MathUtils.clamp;
+const lerp  = THREE.MathUtils.lerp;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function shuffled(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Standard material that stays readable in the dark thanks to a faint self-glow. */
+function makeMaterial(color, { glow = 0.35, flat = false } = {}) {
+  return new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: glow, roughness: 0.5, metalness: 0.1, flatShading: flat,
+  });
+}
+
+/** Draws into an offscreen canvas and returns it as a texture (all procedural). */
+function canvasTexture(size, draw) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  draw(c.getContext('2d'), size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+function disposeObject(obj) {
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+  });
+}
+
+
+/* =====================================================================
+ *  3. RENDERER, SCENE, CAMERA
+ * ===================================================================== */
+
+const stage  = document.getElementById('stage');
+const canvas = document.getElementById('scene');
+const hud    = document.getElementById('hud');
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (err) {
+  const el = document.getElementById('loading');
+  el.classList.add('error');
+  el.textContent = 'Your browser could not start WebGL, which this game needs.';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const BG_COLOR = 0x140b2b;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(BG_COLOR);
+scene.fog = new THREE.Fog(BG_COLOR, 11, 28);
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 80);
+const CAM_TARGET = new THREE.Vector3(0, 1.45, 0);
+const CAM_DIR = new THREE.Vector3(0, 0.52, 0.86).normalize();   // from target towards the camera
+let camDist = 8;
+
+/** Shared by every Points material so point sizes stay in world units. */
+const pointScale = { value: 600 };
+
+/** Fit the canvas to the stage and keep the cauldron framed at any aspect ratio. */
+function resize() {
+  const w = Math.max(stage.clientWidth, 1);
+  const h = Math.max(stage.clientHeight, 1);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const halfHeight = 2.5;                                  // world units that must fit vertically
+  const halfWidth = camera.aspect < 1 ? 2.1 : 3.0;         // …and horizontally
+  camDist = Math.max(halfHeight / tanHalf, halfWidth / (tanHalf * camera.aspect));
+
+  // On phones the HUD covers the top of the stage: shift the picture down so
+  // the cauldron sits in the free area instead of behind the panel.
+  const narrow = window.matchMedia('(max-width: 640px)').matches;
+  if (narrow) camera.setViewOffset(w, h, 0, -hud.offsetHeight * 0.5, w, h);
+  else camera.clearViewOffset();
+
+  camera.updateProjectionMatrix();
+  pointScale.value = renderer.domElement.height / (2 * tanHalf);   // px per world unit at distance 1
+}
+new ResizeObserver(resize).observe(stage);
+new ResizeObserver(resize).observe(hud);
+
+
+/* =====================================================================
+ *  4. LIGHTING
+ * ===================================================================== */
+
+scene.add(new THREE.AmbientLight(0x6a5a9a, 1.1));
+
+// Key light: cool moonlight with shadows.
+const keyLight = new THREE.DirectionalLight(0xcfc4ff, 2.6);
+keyLight.position.set(4, 9, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+Object.assign(keyLight.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 25 });
+keyLight.shadow.bias = -0.0004;
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+
+// Rim light: blue edge from behind to separate the cauldron from the dark.
+const rimLight = new THREE.DirectionalLight(0x58b7ff, 2.2);
+rimLight.position.set(-5, 4, -6);
+scene.add(rimLight);
+
+// Glow of the brew: follows the liquid colour.
+const CAULDRON_Y = 0.7;                       // world height of the cauldron's base
+const LIQUID_LOCAL_Y = 1.36;                  // liquid level inside the cauldron
+const LIQUID_Y = CAULDRON_Y + LIQUID_LOCAL_Y; // …in world space
+const cauldronLight = new THREE.PointLight(LIQUID_START, 9, 9, 2);
+cauldronLight.position.set(0, LIQUID_Y + 0.5, 0);
+scene.add(cauldronLight);
+
+// Fire under the cauldron.
+const fireLight = new THREE.PointLight(0xff7a2a, 9, 6, 2);
+fireLight.position.set(0, 0.45, 0);
+scene.add(fireLight);
+
+
+/* =====================================================================
+ *  5. WORLD: floor, table, cauldron, fire, props
+ * ===================================================================== */
+
+/* ---- 5a. Table (with a procedural plank texture) ---- */
+
+function drawWood(ctx, s) {
+  const planks = 7;
+  const pw = s / planks;
+  for (let p = 0; p < planks; p++) {
+    const x0 = p * pw;
+    ctx.fillStyle = `hsl(${rand(24, 32)}, 48%, ${rand(22, 31)}%)`;
+    ctx.fillRect(x0, 0, pw, s);
+
+    // wavy grain lines
+    for (let g = 0; g < 34; g++) {
+      const gx = x0 + rand(3, pw - 3);
+      ctx.strokeStyle = `rgba(20, 8, 0, ${rand(0.08, 0.28)})`;
+      ctx.lineWidth = rand(0.6, 2);
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      for (let y = 0; y <= s; y += 24) ctx.lineTo(gx + Math.sin(y * 0.02 + g) * 3 + rand(-0.8, 0.8), y);
+      ctx.stroke();
+    }
+
+    // a knot per plank, sometimes
+    if (Math.random() < 0.6) {
+      const kx = x0 + rand(pw * 0.3, pw * 0.7), ky = rand(0, s);
+      for (let r = 12; r > 2; r -= 3) {
+        ctx.strokeStyle = `rgba(15, 5, 0, ${0.35 - r * 0.012})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(kx, ky, r * 0.7, r * 1.4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';              // seam between planks
+    ctx.fillRect(x0, 0, 2, s);
+  }
+}
+
+function buildTable() {
+  const g = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({
+    map: canvasTexture(512, drawWood), roughness: 0.82, metalness: 0.02,
+  });
+
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(3.9, 3.9, 0.35, 72), woodMat);
+  top.position.y = -0.175;                              // top surface sits at y = 0
+  top.receiveShadow = true;
+  top.castShadow = true;
+  g.add(top);
+
+  const pedestal = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.75, 1.1, 3, 20),
+    new THREE.MeshStandardMaterial({ color: 0x2c1a0e, roughness: 0.9 }),
+  );
+  pedestal.position.y = -1.85;
+  g.add(pedestal);
+
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(40, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1a1030, roughness: 1 }),
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -3.35;
+  floor.receiveShadow = true;
+  g.add(floor);
+
+  return g;
+}
+scene.add(buildTable());
+
+/* ---- 5b. Cauldron ---- */
+
+const swirlTexture = canvasTexture(256, (ctx, s) => {
+  ctx.fillStyle = '#8a8a8a';
+  ctx.fillRect(0, 0, s, s);
+  for (let i = 0; i < 40; i++) {                       // soft light and dark blobs
+    const x = rand(0, s), y = rand(0, s), r = rand(18, 60);
+    const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const light = Math.random() < 0.5;
+    grd.addColorStop(0, light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.5)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+});
+swirlTexture.wrapS = swirlTexture.wrapT = THREE.RepeatWrapping;
+swirlTexture.center.set(0.5, 0.5);
+
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a48, metalness: 0.4, roughness: 0.5 });
+const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x24242e, metalness: 0.45, roughness: 0.55 });
+
+const LIQUID_RADIUS = 1.07;
+const liquidMat = new THREE.MeshStandardMaterial({
+  color: 0x0a0a0a,
+  emissive: LIQUID_START,
+  emissiveMap: swirlTexture,
+  emissiveIntensity: 1.1,
+  roughness: 0.15,
+  metalness: 0,
+});
+
+const cauldron = new THREE.Group();      // body + liquid (the part that shakes)
+cauldron.position.y = CAULDRON_Y;
+scene.add(cauldron);
+
+function buildCauldron() {
+  const v2 = (pts) => pts.map(([x, y]) => new THREE.Vector2(x, y));
+
+  // Outer shell: smooth Catmull-Rom through hand-picked profile points, lathed round.
+  const outer = new THREE.SplineCurve(v2([
+    [0, 0], [0.5, 0], [0.9, 0.14], [1.2, 0.5], [1.32, 1.0], [1.26, 1.4], [1.13, 1.68],
+  ])).getPoints(48);
+  const body = new THREE.Mesh(new THREE.LatheGeometry(outer, 56), metalMat);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  cauldron.add(body);
+
+  // Inner shell: listed top → bottom so its normals face the axis.
+  const inner = new THREE.SplineCurve(v2([
+    [1.07, 1.72], [1.08, LIQUID_LOCAL_Y], [1.14, 1.0], [1.04, 0.56], [0.76, 0.24], [0, 0.16],
+  ])).getPoints(40);
+  const innerMat = darkMetalMat.clone();
+  innerMat.side = THREE.DoubleSide;
+  const hollow = new THREE.Mesh(new THREE.LatheGeometry(inner, 56), innerMat);
+  hollow.receiveShadow = true;
+  cauldron.add(hollow);
+
+  // Rim torus hides the seam between the two shells.
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.085, 14, 72), metalMat);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 1.71;
+  rim.castShadow = true;
+  cauldron.add(rim);
+
+  // Iron band around the belly.
+  const band = new THREE.Mesh(new THREE.TorusGeometry(1.325, 0.04, 8, 72), darkMetalMat);
+  band.rotation.x = Math.PI / 2;
+  band.position.y = 1.0;
+  cauldron.add(band);
+
+  // Two side lugs.
+  for (const side of [-1, 1]) {
+    const lug = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.045, 8, 20), darkMetalMat);
+    lug.position.set(side * 1.36, 1.35, 0);
+    lug.castShadow = true;
+    cauldron.add(lug);
+  }
+
+  // Glowing liquid: a ring-subdivided disc so the surface can ripple.
+  const liquidGeo = new THREE.RingGeometry(0.001, LIQUID_RADIUS, 48, 10);
+  const surface = new THREE.Mesh(liquidGeo, liquidMat);
+  surface.rotation.x = -Math.PI / 2;
+  surface.position.y = LIQUID_LOCAL_Y;
+  cauldron.add(surface);
+
+  return { geometry: liquidGeo, rest: liquidGeo.attributes.position.array.slice() };
+}
+const liquidSurface = buildCauldron();
+
+/** Cylinder between two points (used for the legs and logs). */
+function limb(from, to, rTop, rBottom, mat) {
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, dir.length(), 10), mat);
+  mesh.position.copy(from).addScaledVector(dir, 0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  mesh.castShadow = true;
+  return mesh;
+}
+
+// Three splayed iron legs.
+for (let i = 0; i < 3; i++) {
+  const a = (i / 3) * Math.PI * 2 + Math.PI / 6;
+  const foot = new THREE.Vector3(Math.cos(a) * 1.25, 0.02, Math.sin(a) * 1.25);
+  const hip  = new THREE.Vector3(Math.cos(a) * 0.9, 0.86, Math.sin(a) * 0.9);
+  scene.add(limb(foot, hip, 0.1, 0.065, darkMetalMat));   // thick at the pot, tapering to the foot
+}
+
+/* ---- 5c. Fire ---- */
+
+const flames = [];
+function buildFire() {
+  const logMat = new THREE.MeshStandardMaterial({ color: 0x2a160a, roughness: 1, emissive: 0x5a1a00, emissiveIntensity: 0.6 });
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI;
+    const dx = Math.cos(a) * 0.5, dz = Math.sin(a) * 0.5;
+    scene.add(limb(new THREE.Vector3(-dx, 0.1, -dz), new THREE.Vector3(dx, 0.1, dz), 0.07, 0.07, logMat));
+  }
+
+  const additive = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false };
+  const layers = [
+    { color: 0xff5a14, opacity: 0.55, height: 0.62, radius: 0.2 },
+    { color: 0xffb02e, opacity: 0.6,  height: 0.46, radius: 0.13 },
+    { color: 0xfff1a0, opacity: 0.7,  height: 0.3,  radius: 0.07 },
+  ];
+  const spots = [[0, 0], [0.3, 0.1], [-0.28, 0.14], [0.05, -0.3], [-0.1, 0.3]];
+  for (const [x, z] of spots) {
+    for (const L of layers) {
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(L.radius, L.height, 10, 1, true),
+        new THREE.MeshBasicMaterial({ color: L.color, opacity: L.opacity, side: THREE.DoubleSide, ...additive }),
+      );
+      cone.position.set(x, 0.12 + L.height / 2, z);
+      scene.add(cone);
+      flames.push({ cone, baseY: cone.position.y, h: L.height, phase: rand(0, 6.28), speed: rand(7, 12) });
+    }
+  }
+}
+buildFire();
+
+/* ---- 5d. Props: candles and potion vials ---- */
+
+const glowTexture = canvasTexture(128, (ctx, s) => {
+  const grd = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.3, 'rgba(255,255,255,0.35)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, s, s);
+});
+
+const candleFlames = [];
+function buildCandle(x, z, height) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+
+  const wax = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.125, height, 14),
+    new THREE.MeshStandardMaterial({ color: 0xe9dcc0, roughness: 0.7, emissive: 0x3a2e18, emissiveIntensity: 0.6 }),
+  );
+  wax.position.y = height / 2;
+  wax.castShadow = true;
+  g.add(wax);
+
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+  flame.scale.y = 1.8;
+  flame.position.y = height + 0.1;
+  g.add(flame);
+
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture, color: 0xffa640, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8,
+  }));
+  halo.scale.setScalar(0.9);
+  halo.position.y = height + 0.1;
+  g.add(halo);
+
+  candleFlames.push({ flame, halo, phase: rand(0, 6.28) });
+  scene.add(g);
+}
+buildCandle(-2.0, 2.4, 0.55);
+buildCandle(2.55, -1.1, 0.4);
+buildCandle(-1.6, -2.4, 0.7);
+
+function buildVial(x, z, color) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  const glass = new THREE.MeshStandardMaterial({ color: 0xaad0ff, transparent: true, opacity: 0.3, roughness: 0.1, metalness: 0.1 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.4, 16), glass);
+  body.position.y = 0.2;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.16, 12), glass);
+  neck.position.y = 0.48;
+  const fluid = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.24, 14), new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: 0.9, roughness: 0.2,
+  }));
+  fluid.position.y = 0.14;
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.08, 10), new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 1 }));
+  cork.position.y = 0.6;
+  g.add(fluid, body, neck, cork);
+  scene.add(g);
+}
+buildVial(2.7, 1.5, 0x6bff9a);
+buildVial(2.25, 1.95, 0xff6bd6);
+buildVial(-2.3, -1.2, 0x6bb6ff);
+
+
+/* =====================================================================
+ *  6. PARTICLES (BufferGeometry + Points, custom shader)
+ * ===================================================================== */
+
+/**
+ * One glowing round point per vertex. Attributes:
+ *   position – world/local position     aColor – rgb
+ *   aSize    – diameter in world units  aLife  – 0..1, drives alpha and size
+ * Additive blending so overlapping particles brighten like light.
+ */
+function createPointCloud(count, tint = new THREE.Color(1, 1, 1)) {
+  const geometry = new THREE.BufferGeometry();
+  const attrs = {
+    position: new THREE.BufferAttribute(new Float32Array(count * 3), 3),
+    aColor:   new THREE.BufferAttribute(new Float32Array(count * 3), 3),
+    aSize:    new THREE.BufferAttribute(new Float32Array(count), 1),
+    aLife:    new THREE.BufferAttribute(new Float32Array(count), 1),
+  };
+  for (const [name, attr] of Object.entries(attrs)) {
+    attr.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute(name, attr);
+  }
+
+  const material = new THREE.ShaderMaterial({
+    uniforms: { uScale: pointScale, uTint: { value: tint } },
+    vertexShader: /* glsl */`
+      attribute vec3 aColor;
+      attribute float aSize;
+      attribute float aLife;
+      uniform float uScale;
+      varying vec3 vColor;
+      varying float vLife;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = aSize * uScale * (0.35 + 0.65 * aLife) / -mv.z;
+        gl_Position = projectionMatrix * mv;
+        vColor = aColor;
+        vLife = aLife;
+      }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 uTint;
+      varying vec3 vColor;
+      varying float vLife;
+      void main() {
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        if (r > 1.0) discard;
+        float soft = 1.0 - r;
+        gl_FragColor = vec4(vColor * uTint, soft * soft * vLife);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false;      // positions change every frame; skip stale bounds
+  return { points, attrs, count };
+}
+
+/* ---- 6a. Rising bubbles (local to the cauldron) ---- */
+
+const BUBBLE_COUNT = 70;
+const BUBBLE_RISE = 0.95;
+const bubbleTint = new THREE.Color(1, 1, 1);
+const bubbles = createPointCloud(BUBBLE_COUNT, bubbleTint);
+cauldron.add(bubbles.points);
+
+const bubbleState = Array.from({ length: BUBBLE_COUNT }, () => ({
+  angle: rand(0, 6.28), radius: Math.sqrt(Math.random()) * 0.9,
+  progress: Math.random(), speed: rand(0.18, 0.4), size: rand(0.1, 0.22), phase: rand(0, 6.28),
+}));
+const BUBBLE_COLOR = new THREE.Color(1, 1, 1);
+
+function updateBubbles(dt, t) {
+  const { position, aColor, aSize, aLife } = bubbles.attrs;
+  const boost = 1 + liquid.agitation * 3;
+  for (let i = 0; i < BUBBLE_COUNT; i++) {
+    const b = bubbleState[i];
+    b.progress += b.speed * boost * dt;
+    if (b.progress >= 1) {                               // respawn at the surface
+      b.progress = 0;
+      b.angle = rand(0, 6.28);
+      b.radius = Math.sqrt(Math.random()) * 0.9;
+    }
+    const p = b.progress;
+    position.setXYZ(
+      i,
+      Math.cos(b.angle) * b.radius + Math.sin(t * 2 + b.phase) * 0.04,
+      LIQUID_LOCAL_Y + 0.02 + p * BUBBLE_RISE,
+      Math.sin(b.angle) * b.radius + Math.cos(t * 2 + b.phase) * 0.04,
+    );
+    aColor.setXYZ(i, BUBBLE_COLOR.r, BUBBLE_COLOR.g, BUBBLE_COLOR.b);
+    aSize.setX(i, b.size);
+    aLife.setX(i, Math.sin(p * Math.PI) * 0.85);         // fade in, fade out
+  }
+  position.needsUpdate = aColor.needsUpdate = aSize.needsUpdate = aLife.needsUpdate = true;
+}
+
+/* ---- 6b. Pooled burst particles (world space) ---- */
+
+const BURST_POOL = 900;
+const burst = createPointCloud(BURST_POOL);
+scene.add(burst.points);
+
+// Per-particle simulation state (not uploaded to the GPU).
+const burstVel   = new Float32Array(BURST_POOL * 3);   // velocity
+const burstDecay = new Float32Array(BURST_POOL);       // life lost per second (0 = dead)
+const burstGrav  = new Float32Array(BURST_POOL);
+const burstDrag  = new Float32Array(BURST_POOL);
+const burstSpin  = new Float32Array(BURST_POOL);       // curl in rad/s
+let burstCursor = 0;                                   // ring-buffer write head
+
+const _c = new THREE.Color();
+
+/**
+ * Spawns `count` particles over the liquid surface. When the pool is full the
+ * oldest particles are recycled.
+ */
+function emitBurst({ color, count, speed, gravity = -3.5, drag = 0.8, size = 0.12,
+                     life = [0.9, 1.8], spread = 1, lift = 1, swirl = 0, y = LIQUID_Y }) {
+  _c.set(color);
+  const { position, aColor, aSize, aLife } = burst.attrs;
+  for (let n = 0; n < count; n++) {
+    const i = burstCursor;
+    burstCursor = (burstCursor + 1) % BURST_POOL;
+
+    const a = rand(0, 6.28), r = Math.sqrt(Math.random()) * LIQUID_RADIUS * 0.85;
+    position.setXYZ(i, Math.cos(a) * r, y + 0.03, Math.sin(a) * r);
+
+    const h = rand(0.15, 0.7) * speed * spread, d = rand(0, 6.28);
+    burstVel[i * 3]     = Math.cos(d) * h;
+    burstVel[i * 3 + 1] = rand(0.5, 1.3) * speed * lift;
+    burstVel[i * 3 + 2] = Math.sin(d) * h;
+    burstGrav[i] = gravity;
+    burstDrag[i] = drag;
+    burstSpin[i] = swirl ? swirl * rand(0.7, 1.3) : 0;
+    burstDecay[i] = 1 / rand(life[0], life[1]);
+
+    const k = rand(0.75, 1.25);                            // brightness jitter
+    aColor.setXYZ(i, _c.r * k, _c.g * k, _c.b * k);
+    aSize.setX(i, size * rand(0.7, 1.3));
+    aLife.setX(i, 1);
+  }
+}
+
+function updateBurst(dt) {
+  const { position, aLife } = burst.attrs;
+  for (let i = 0; i < BURST_POOL; i++) {
+    if (burstDecay[i] === 0) continue;
+    const life = aLife.getX(i) - burstDecay[i] * dt;
+    if (life <= 0) {
+      burstDecay[i] = 0;
+      aLife.setX(i, 0);
+      continue;
+    }
+    aLife.setX(i, life);
+
+    const i3 = i * 3;
+    let vx = burstVel[i3], vy = burstVel[i3 + 1], vz = burstVel[i3 + 2];
+
+    if (burstSpin[i] !== 0) {                              // rotate velocity → spiral path
+      const ang = burstSpin[i] * dt, c = Math.cos(ang), s = Math.sin(ang);
+      const rx = vx * c - vz * s;
+      vz = vx * s + vz * c;
+      vx = rx;
+    }
+    const damp = Math.exp(-burstDrag[i] * dt);
+    vx *= damp; vz *= damp;
+    vy = vy * damp + burstGrav[i] * dt;
+
+    burstVel[i3] = vx; burstVel[i3 + 1] = vy; burstVel[i3 + 2] = vz;
+    position.setXYZ(i, position.getX(i) + vx * dt, position.getY(i) + vy * dt, position.getZ(i) + vz * dt);
+  }
+  position.needsUpdate = aLife.needsUpdate = burst.attrs.aColor.needsUpdate = burst.attrs.aSize.needsUpdate = true;
+}
+
+function clearBurst() {
+  burstDecay.fill(0);
+  burst.attrs.aLife.array.fill(0);
+  burst.attrs.aLife.needsUpdate = true;
+}
+
+/* ---- 6c. Ambient motes floating in the dark ---- */
+
+const MOTE_COUNT = 110;
+const motes = createPointCloud(MOTE_COUNT);
+scene.add(motes.points);
+const moteState = Array.from({ length: MOTE_COUNT }, () => {
+  const a = rand(0, 6.28), r = rand(2.6, 10);
+  return { x: Math.cos(a) * r, z: Math.sin(a) * r, y: rand(0, 7), rise: rand(0.08, 0.25), phase: rand(0, 6.28) };
+});
+{
+  const palette = [new THREE.Color(0xb48cff), new THREE.Color(0x6fd8ff), new THREE.Color(0xffd98a)];
+  moteState.forEach((m, i) => {
+    const c = palette[i % palette.length];
+    motes.attrs.aColor.setXYZ(i, c.r, c.g, c.b);
+    motes.attrs.aSize.setX(i, rand(0.05, 0.13));
+  });
+}
+
+function updateMotes(t) {
+  const { position, aLife } = motes.attrs;
+  for (let i = 0; i < MOTE_COUNT; i++) {
+    const m = moteState[i];
+    const y = (m.y + t * m.rise) % 7;
+    position.setXYZ(i, m.x + Math.sin(t * 0.3 + m.phase) * 0.5, y, m.z + Math.cos(t * 0.25 + m.phase) * 0.5);
+    aLife.setX(i, (0.35 + 0.65 * Math.pow(Math.sin(t * 0.8 + m.phase), 2)) * Math.sin((y / 7) * Math.PI));
+  }
+  position.needsUpdate = aLife.needsUpdate = motes.attrs.aColor.needsUpdate = motes.attrs.aSize.needsUpdate = true;
+}
+
+/* ---- 6d. Ripples on the liquid surface ---- */
+
+const rippleGeo = new THREE.RingGeometry(0.88, 1, 56);
+const ripples = [];
+
+function spawnRipple(color, strength = 1) {
+  const mat = new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(rippleGeo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = LIQUID_LOCAL_Y + 0.02;
+  cauldron.add(mesh);
+  ripples.push({ mesh, age: 0, duration: 0.9 + 0.3 * strength });
+}
+
+function updateRipples(dt) {
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i];
+    r.age += dt;
+    const k = r.age / r.duration;
+    if (k >= 1) {
+      cauldron.remove(r.mesh);
+      r.mesh.material.dispose();
+      ripples.splice(i, 1);
+      continue;
+    }
+    r.mesh.scale.setScalar(LIQUID_RADIUS * (0.15 + 0.85 * Math.sqrt(k)));
+    r.mesh.material.opacity = 0.9 * (1 - k);
+  }
+}
+
+
+/* =====================================================================
+ *  7. LIQUID, FIRE & CAMERA ANIMATION
+ * ===================================================================== */
+
+const liquid = {
+  base: new THREE.Color(LIQUID_START),     // colour of the brew between mishaps
+  shown: new THREE.Color(LIQUID_START),    // eased colour actually displayed
+  override: new THREE.Color(),             // temporary mishap colour
+  overrideTime: 0,
+  glow: 1.1,                               // emissive intensity (eased)
+  glowTarget: 1.1,
+  agitation: 0,                            // surface turbulence, decays to 0
+  flash: 0,                                // brief extra light after events
+};
+
+const WHITE = new THREE.Color(1, 1, 1);
+const _lightColor = new THREE.Color();
+function updateLiquid(dt, t) {
+  liquid.overrideTime = Math.max(0, liquid.overrideTime - dt);
+  const target = liquid.overrideTime > 0 ? liquid.override : liquid.base;
+  liquid.shown.lerp(target, 1 - Math.exp(-4 * dt));
+  liquid.glow = lerp(liquid.glow, liquid.glowTarget, 1 - Math.exp(-3 * dt));
+  liquid.agitation *= Math.exp(-1.6 * dt);
+  liquid.flash *= Math.exp(-3 * dt);
+
+  liquidMat.emissive.copy(liquid.shown);
+  liquidMat.emissiveIntensity = liquid.glow * (1 + 0.08 * Math.sin(t * 3)) + liquid.flash * 0.6;
+  swirlTexture.rotation += dt * 0.12;
+  swirlTexture.offset.x = Math.sin(t * 0.2) * 0.05;
+
+  // The point light borrows the liquid colour (never fully black so mishaps still read).
+  _lightColor.copy(liquid.shown).lerp(WHITE, 0.1);
+  cauldronLight.color.copy(_lightColor);
+  cauldronLight.intensity = (7 + liquid.glow * 2.5 + liquid.flash * 14) * (1 + 0.06 * Math.sin(t * 5));
+  BUBBLE_COLOR.copy(liquid.shown).multiplyScalar(1.5).lerp(WHITE, 0.35);
+
+  // Ripple the surface: standing waves plus turbulence after events.
+  const pos = liquidSurface.geometry.attributes.position;
+  const rest = liquidSurface.rest;
+  const amp = 0.012 + liquid.agitation * 0.07;
+  for (let i = 0; i < pos.count; i++) {
+    const x = rest[i * 3], y = rest[i * 3 + 1];
+    const edge = 1 - clamp(Math.hypot(x, y) / LIQUID_RADIUS, 0, 1) * 0.35;   // calmer at the wall
+    pos.setZ(i, amp * edge * (Math.sin(x * 5 + t * 3) + Math.cos(y * 6 - t * 2.3) + 0.6 * Math.sin((x + y) * 9 + t * 5)));
+  }
+  pos.needsUpdate = true;
+  liquidSurface.geometry.computeVertexNormals();
+}
+
+function updateFire(t) {
+  for (const f of flames) {
+    const flick = 0.8 + 0.3 * Math.sin(t * f.speed + f.phase) + 0.12 * Math.sin(t * f.speed * 2.7);
+    f.cone.scale.set(1 + (1 - flick) * 0.2, flick, 1 + (1 - flick) * 0.2);
+    f.cone.position.y = 0.12 + (f.h * flick) / 2;
+  }
+  fireLight.intensity = 8 + 3 * Math.sin(t * 11) + 2 * Math.sin(t * 23 + 1);
+
+  for (const c of candleFlames) {
+    const k = 1 + 0.18 * Math.sin(t * 13 + c.phase) + 0.08 * Math.sin(t * 29 + c.phase);
+    c.flame.scale.set(1, 1.8 * k, 1);
+    c.halo.scale.setScalar(0.85 * k);
+  }
+}
+
+/* Camera: idle sway + shake after mishaps. */
+const shake = { intensity: 0, time: 0, duration: 1 };
+const _camPos = new THREE.Vector3();
+function addShake(intensity) {
+  if (intensity <= 0) return;
+  shake.intensity = Math.max(shake.intensity * (shake.time / shake.duration), intensity);
+  shake.duration = 0.9 + intensity * 1.6;
+  shake.time = shake.duration;
+}
+
+function updateCamera(dt, t) {
+  const sway = Math.sin(t * 0.22) * 0.07;
+  _camPos.copy(CAM_DIR).applyAxisAngle(THREE.Object3D.DEFAULT_UP, sway).multiplyScalar(camDist).add(CAM_TARGET);
+
+  if (shake.time > 0) {
+    shake.time = Math.max(0, shake.time - dt);
+    const falloff = Math.pow(shake.time / shake.duration, 2);
+    const amp = shake.intensity * 0.4 * falloff * (reducedMotion ? 0.25 : 1);
+    _camPos.x += (Math.sin(t * 61) + Math.sin(t * 97 + 1.3)) * 0.5 * amp;
+    _camPos.y += (Math.sin(t * 73 + 2.1) + Math.sin(t * 89)) * 0.5 * amp;
+    _camPos.z += Math.sin(t * 53 + 0.7) * 0.5 * amp;
+  }
+  camera.position.copy(_camPos);
+  camera.lookAt(CAM_TARGET);
+}
+
+
+/* =====================================================================
+ *  8. FALLING INGREDIENTS
+ * ===================================================================== */
+
+const drops = [];
+const FALL_SECONDS = 0.55;
+const SINK_SECONDS = 0.35;
+
+/**
+ * Drops a mesh of the ingredient into the cauldron. `fromX` is its start offset
+ * (derived from the clicked button) and `onLand` fires when it hits the liquid.
+ */
+function spawnDrop(def, fromX, onLand) {
+  const obj = def.build(makeMaterial(def.color, { glow: def.glow ?? 0.35, flat: def.flat }));
+  obj.scale.setScalar(1.15);
+  const start = new THREE.Vector3(fromX, 4.4, 1.4);
+  const end = new THREE.Vector3(0, LIQUID_Y + 0.12, 0);
+  obj.position.copy(start);
+  scene.add(obj);
+  drops.push({
+    obj, start, end, onLand, state: 'fall', t: 0,
+    spin: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)),
+  });
+}
+
+function updateDrops(dt) {
+  // Oldest first: ingredients that land in the same frame must resolve in click order,
+  // otherwise the UI would end up showing the progress of an earlier click.
+  for (let i = 0; i < drops.length; i++) {
+    const d = drops[i];
+    d.obj.rotation.x += d.spin.x * dt;
+    d.obj.rotation.y += d.spin.y * dt;
+    d.obj.rotation.z += d.spin.z * dt;
+
+    if (d.state === 'fall') {
+      d.t += dt / FALL_SECONDS;
+      const k = Math.min(d.t, 1);
+      const glide = 1 - (1 - k) * (1 - k);                         // ease-out sideways…
+      d.obj.position.set(lerp(d.start.x, d.end.x, glide), lerp(d.start.y, d.end.y, k * k), lerp(d.start.z, d.end.z, glide));   // …gravity-like drop
+      if (d.t >= 1) {
+        d.state = 'sink';
+        d.t = 0;
+        d.onLand();
+      }
+    } else {
+      d.t += dt / SINK_SECONDS;
+      const k = Math.min(d.t, 1);
+      d.obj.scale.setScalar(1.15 * (1 - k));
+      d.obj.position.y = d.end.y - k * 0.25;
+      if (k >= 1) {
+        scene.remove(d.obj);
+        disposeObject(d.obj);
+        drops.splice(i--, 1);
+      }
+    }
+  }
+}
+
+
+/* =====================================================================
+ *  9. UI
+ * ===================================================================== */
+
+const $ = (sel) => document.querySelector(sel);
+const ui = {
+  recipe: $('#recipe'),
+  pips: [...document.querySelectorAll('#mistakes .pip')],
+  mistakeCount: $('#mistake-count'),
+  toast: $('#toast'),
+  shelf: $('#shelf'),
+  win: $('#overlay-win'),
+  winText: $('#win-text'),
+  lose: $('#overlay-lose'),
+  loading: $('#loading'),
+};
+
+/** Recipe list is static HTML generated once; classes are toggled per step. */
+const recipeItems = RECIPE.map((id, i) => {
+  const def = INGREDIENT_BY_ID[id];
+  const li = document.createElement('li');
+  li.innerHTML = `<span class="num">${i + 1}</span><span class="emoji" aria-hidden="true">${def.emoji}</span><span class="name">${def.name}</span>`;
+  ui.recipe.appendChild(li);
+  return li;
+});
+
+function renderRecipe(done) {
+  recipeItems.forEach((li, i) => {
+    li.classList.toggle('done', i < done);
+    li.classList.toggle('current', i === done);
+    if (i === done) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+  });
+}
+
+function renderMistakes(n) {
+  ui.pips.forEach((p, i) => p.classList.toggle('hit', i < n));
+  ui.mistakeCount.textContent = `${n} / ${MAX_MISTAKES}`;
+}
+
+let toastTimer = 0;
+function showToast(message, tone = '', ms = 2400) {
+  clearTimeout(toastTimer);
+  ui.toast.textContent = message;
+  ui.toast.className = `show ${tone}`;
+  toastTimer = setTimeout(() => { ui.toast.className = tone; }, ms);
+}
+function hideToast() {
+  clearTimeout(toastTimer);
+  ui.toast.className = '';
+}
+
+/** Builds the shelf in a fresh random order so position never gives the answer away. */
+const shelfButtons = new Map();
+function buildShelf() {
+  ui.shelf.replaceChildren();
+  shelfButtons.clear();
+  for (const def of shuffled(INGREDIENTS)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ingredient';
+    btn.dataset.id = def.id;
+    btn.innerHTML = `<span class="emoji" aria-hidden="true">${def.emoji}</span><span class="name">${def.name}</span>`;
+    btn.addEventListener('click', () => pickIngredient(def.id, btn));
+    ui.shelf.appendChild(btn);
+    shelfButtons.set(def.id, btn);
+  }
+}
+
+function setShelfEnabled(enabled) {
+  for (const btn of shelfButtons.values()) btn.disabled = !enabled;
+}
+
+function showOverlay(el) {
+  el.hidden = false;
+  el.querySelector('[data-restart]').focus({ preventScroll: true });
+}
+
+
+/* =====================================================================
+ *  10. GAME LOGIC
+ * ===================================================================== */
+
+const game = {
+  phase: 'playing',      // 'playing' | 'ended'
+  step: 0,               // correct ingredients so far (logic state)
+  mistakes: 0,
+  lastMishap: -1,
+};
+
+/** Tiny scheduler driven by the render loop, so restarts can cancel pending events. */
+let timers = [];
+const after = (seconds, fn) => timers.push({ left: seconds, fn });
+function updateTimers(dt) {
+  const due = [];
+  timers = timers.filter((t) => {
+    t.left -= dt;
+    if (t.left > 0) return true;
+    due.push(t.fn);                  // fired in scheduling order, after the list is settled
+    return false;
+  });
+  due.forEach((fn) => fn());
+}
+
+/** Random mishap that never repeats the previous one. */
+function pickMishap() {
+  let i;
+  do { i = Math.floor(Math.random() * MISHAPS.length); } while (i === game.lastMishap);
+  game.lastMishap = i;
+  return MISHAPS[i];
+}
+
+/**
+ * Called when the player clicks an ingredient. The outcome is decided at once
+ * (so fast clicking works); the visuals play when the ingredient lands.
+ */
+function pickIngredient(id, button) {
+  if (game.phase !== 'playing') return;
+  const def = INGREDIENT_BY_ID[id];
+
+  // Throw the ingredient from above the button's horizontal position.
+  const sRect = stage.getBoundingClientRect();
+  const bRect = button.getBoundingClientRect();
+  const nx = ((bRect.left + bRect.width / 2) - sRect.left) / sRect.width * 2 - 1;
+  const fromX = clamp(nx, -1, 1) * 2.4;
+
+  if (id === RECIPE[game.step]) {
+    const stepNo = ++game.step;
+    const finished = stepNo === RECIPE.length;
+    if (finished) endGame();
+    spawnDrop(def, fromX, () => onCorrect(def, stepNo, finished));
+  } else {
+    const mistakeNo = ++game.mistakes;
+    const mishap = pickMishap();
+    const failed = mistakeNo >= MAX_MISTAKES;
+    if (failed) endGame();
+    spawnDrop(def, fromX, () => onMistake(mishap, mistakeNo, failed));
+  }
+}
+
+function endGame() {
+  game.phase = 'ended';
+  setShelfEnabled(false);
+}
+
+function onCorrect(def, stepNo, finished) {
+  renderRecipe(stepNo);
+  shelfButtons.get(def.id)?.classList.add('used');
+
+  liquid.base.lerp(_c.set(def.color), 0.3);              // brew drifts towards the ingredient
+  liquid.agitation = Math.max(liquid.agitation, 0.5);
+  liquid.flash = Math.max(liquid.flash, 0.5);
+  spawnRipple(def.color);
+  emitBurst({ color: def.color, count: 60, speed: 1.9, gravity: -5, drag: 0.4, size: 0.1, life: [0.7, 1.2] });
+
+  if (!finished) {
+    showToast(`✔ ${def.name} dissolves into the brew`, 'good', 1600);
+    return;
+  }
+
+  // Victory: the brew turns to liquid gold and erupts in light.
+  showToast('✨ The elixir shimmers into being!', 'good', 3000);
+  liquid.base.set(LIQUID_WIN);
+  liquid.glowTarget = 2.4;
+  liquid.agitation = 1;
+  const fountain = (color, count, speed) => {
+    emitBurst({ color, count, speed, gravity: -2.2, drag: 0.5, size: 0.14, life: [1.4, 2.6], lift: 1.3 });
+    spawnRipple(color, 1.5);
+  };
+  fountain(0xffd96a, 260, 3.4);
+  addShake(0.06);
+  after(0.4, () => fountain(0x6fe9ff, 200, 3.0));
+  after(0.8, () => fountain(0xff9be8, 200, 3.0));
+  after(1.2, () => fountain(0xfff2b0, 240, 3.8));
+  after(2.1, () => {
+    ui.winText.textContent = game.mistakes === 0
+      ? 'A flawless brew – not a single mishap. The guild is impressed.'
+      : `You brewed it with ${game.mistakes} mishap${game.mistakes > 1 ? 's' : ''} along the way. The elixir still works!`;
+    showOverlay(ui.win);
+  });
+}
+
+function onMistake(m, mistakeNo, failed) {
+  renderMistakes(mistakeNo);
+  showToast(m.message, 'bad', 2600);
+
+  // Temporary liquid colour, surface turbulence and light flash.
+  liquid.override.set(m.liquid);
+  liquid.overrideTime = MISHAP_LIQUID_SECONDS;
+  liquid.agitation = 1;
+  liquid.flash = 1;
+
+  emitBurst(m);
+  spawnRipple(m.color, 1.4);
+  addShake(m.shake);
+
+  if (!failed) return;
+
+  // Third strike: one last bang, the brew is burnt, then the game-over card.
+  after(0.6, () => {
+    liquid.base.set(LIQUID_LOSE);
+    liquid.glowTarget = 0.3;
+    emitBurst({ color: 0xff6a2a, count: 300, speed: 4.2, gravity: -5, drag: 0.4, size: 0.12, life: [0.9, 1.8] });
+    emitBurst({ color: 0xffd27a, count: 140, speed: 3.0, gravity: -3, drag: 0.5, size: 0.1, life: [0.9, 1.8] });
+    addShake(0.5);
+    showToast('💥 Too many mishaps – the brew is ruined!', 'bad', 3000);
+  });
+  after(2.0, () => showOverlay(ui.lose));
+}
+
+/** Resets everything for a fresh attempt. */
+function newGame() {
+  timers = [];
+  hideToast();
+  ui.win.hidden = true;
+  ui.lose.hidden = true;
+
+  for (const d of drops) { scene.remove(d.obj); disposeObject(d.obj); }
+  drops.length = 0;
+  for (const r of ripples) { cauldron.remove(r.mesh); r.mesh.material.dispose(); }
+  ripples.length = 0;
+  clearBurst();
+  shake.time = 0;
+
+  liquid.base.set(LIQUID_START);
+  liquid.overrideTime = 0;
+  liquid.glowTarget = 1.1;
+  liquid.agitation = 0.3;
+
+  Object.assign(game, { phase: 'playing', step: 0, mistakes: 0, lastMishap: -1 });
+  renderRecipe(0);
+  renderMistakes(0);
+  buildShelf();
+
+  showToast('Follow the recipe – wrong ingredients cause mishaps!', '', 3200);
+}
+
+document.querySelectorAll('[data-restart]').forEach((btn) => btn.addEventListener('click', newGame));
+
+
+/* =====================================================================
+ *  11. MAIN LOOP
+ * ===================================================================== */
+
+const clock = new THREE.Clock();
+let elapsed = 0;
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);     // clamp so a hidden tab can't cause a huge step
+  elapsed += dt;
+
+  updateTimers(dt);
+  updateDrops(dt);
+  updateLiquid(dt, elapsed);
+  updateBubbles(dt, elapsed);
+  updateBurst(dt);
+  updateMotes(elapsed);
+  updateRipples(dt);
+  updateFire(elapsed);
+  updateCamera(dt, elapsed);
+
+  renderer.render(scene, camera);
+});
+
+resize();
+newGame();
+window.__alchemistBooted = true;
+ui.loading.classList.add('hidden');
+</script>
+</body>
+</html>

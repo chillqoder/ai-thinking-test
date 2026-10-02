@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#151713">
+  <meta name="description" content="Meet Ironfang. A procedurally sculpted orc warrior with an axe to grind. An interactive Three.js character showcase.">
+  <title>Ironfang — The Warforge</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23151713'/%3E%3Cpath d='M13 32 26 8M18 10Q9 8 7 18L16 22M25 14Q33 17 33 25L23 24' stroke='%23cdad7a' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: dark; --paper: #e9e5d9; --muted: #96978a; --gold: #c9a976; --line: rgba(215, 201, 167, .15); --red: #8f392b; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #151713; color: var(--paper); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    button:focus-visible { outline: 2px solid var(--gold); outline-offset: 6px; }
+    button:disabled { cursor: wait; }
+    button svg { pointer-events: none; }
+    #scene { position: absolute; inset: 0; background: radial-gradient(ellipse at 59% 40%, #303126 0, #1d211a 28%, #151713 65%); }
+    #scene canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+    #scene canvas:active { cursor: grabbing; }
+    .vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, rgba(17, 19, 16, .95), transparent 29%, transparent 82%, rgba(17, 19, 16, .35)), radial-gradient(ellipse at 55% 48%, transparent 36%, rgba(12, 14, 11, .32) 100%); }
+    .frame { position: absolute; inset: 20px; border: 1px solid rgba(201, 169, 118, .09); pointer-events: none; }
+    .frame::before, .frame::after { content: ""; position: absolute; width: 5px; height: 5px; background: var(--gold); opacity: .55; }
+    .frame::before { top: -3px; left: -3px; }
+    .frame::after { right: -3px; bottom: -3px; }
+    .topbar { position: absolute; top: 0; left: 0; right: 0; height: 104px; display: flex; align-items: center; justify-content: space-between; padding: 0 58px; }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-mark { width: 32px; height: 36px; color: var(--gold); }
+    .brand-name { font-family: Georgia, "Times New Roman", serif; font-size: 17px; letter-spacing: .20em; }
+    .brand-sub { display: block; margin-top: 5px; color: var(--muted); font-size: 8px; letter-spacing: .32em; }
+    .top-controls { display: flex; align-items: center; gap: 25px; }
+    .utility { border: 0; background: transparent; padding: 10px 0; color: #a4a697; display: inline-flex; align-items: center; gap: 9px; font-size: 9px; letter-spacing: .14em; transition: color .2s; }
+    .utility:hover { color: var(--paper); }
+    .utility svg { width: 15px; height: 15px; }
+    .utility-divider { width: 1px; height: 16px; background: var(--line); }
+    .introduction { position: absolute; top: 22%; left: 60px; pointer-events: none; }
+    .eyebrow { margin: 0; color: var(--gold); font-size: 9px; font-weight: 500; letter-spacing: .24em; line-height: 1.6; }
+    .eyebrow::before { content: ""; display: inline-block; width: 22px; height: 1px; margin-right: 11px; background: var(--gold); vertical-align: middle; }
+    h1 { margin: 19px 0 8px -3px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(48px, 5.5vw, 83px); line-height: 1.04; font-weight: 400; letter-spacing: -.065em; }
+    .clan { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #a9ac99; font-size: 19px; font-style: italic; letter-spacing: .02em; }
+    .character-tags { display: flex; gap: 7px; margin-top: 27px; }
+    .tag { padding: 6px 9px; border: 1px solid var(--line); font-size: 8px; letter-spacing: .13em; color: #9eaa8c; }
+    .tag:first-child { color: var(--gold); }
+    .lore { color: var(--muted); font-size: 12px; line-height: 1.9; margin: 23px 0 0; max-width: 220px; }
+    .equipment { position: absolute; bottom: 23%; left: 60px; width: 222px; pointer-events: none; }
+    .section-label { color: #717869; font-size: 8px; letter-spacing: .22em; }
+    .weapon { display: flex; gap: 14px; align-items: center; margin-top: 16px; padding-top: 17px; border-top: 1px solid var(--line); }
+    .weapon-icon { height: 41px; width: 32px; color: var(--gold); }
+    .weapon-name { font-family: Georgia, "Times New Roman", serif; font-size: 17px; }
+    .weapon-detail { margin-top: 6px; color: var(--muted); font-size: 9px; letter-spacing: .025em; }
+    .attributes { position: absolute; top: 39%; right: 59px; width: 138px; pointer-events: none; }
+    .attribute { margin-top: 23px; }
+    .attribute-heading { display: flex; justify-content: space-between; font-size: 9px; color: #a8ac9c; }
+    .attribute-heading span:last-child { color: var(--gold); font-size: 9px; }
+    .attribute-track { display: flex; gap: 3px; margin-top: 9px; }
+    .attribute-track i { width: 11px; height: 3px; background: #9a895f; opacity: .65; }
+    .attribute-track i.empty { background: #404536; opacity: .7; }
+    .specimen { position: absolute; top: 155px; right: 59px; text-align: right; pointer-events: none; }
+    .specimen-number { font-family: Georgia, "Times New Roman", serif; font-size: 29px; font-weight: 400; color: #797d69; }
+    .specimen-label { margin-top: 6px; color: #717869; font-size: 8px; letter-spacing: .18em; }
+    .introduction, .equipment, .attributes, .specimen { transition: opacity .25s; }
+    .attacking .introduction, .attacking .equipment, .attacking .attributes, .attacking .specimen { opacity: .18; }
+    .action { position: absolute; left: 57%; bottom: 86px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+    .readiness { margin-bottom: 17px; display: flex; align-items: center; gap: 8px; color: #a3ab8f; font-size: 8px; letter-spacing: .23em; white-space: nowrap; }
+    .status-dot { width: 4px; height: 4px; border-radius: 50%; background: #a4b087; box-shadow: 0 0 8px #87976d66; }
+    .readiness.busy { color: #d1ae79; }
+    .readiness.busy .status-dot { background: #d1ae79; }
+    #attackBtn { position: relative; display: flex; align-items: center; justify-content: center; gap: 13px; min-width: 226px; height: 61px; overflow: hidden; border: 1px solid #a25c3e; border-radius: 4px; background: linear-gradient(110deg, #75352a, #943e2e 55%, #76372a); box-shadow: 0 5px 28px #0005, inset 0 1px 0 #e9b38d20; transition: box-shadow .25s, transform .15s, border-color .25s; }
+    #attackBtn:hover:not(:disabled) { box-shadow: 0 0 35px #b9553435, 0 8px 35px #0005, inset 0 1px 0 #edc19935; border-color: #ce9563; transform: translateY(-2px); }
+    #attackBtn:active:not(:disabled) { transform: translateY(1px) scale(.985); }
+    #attackBtn::before { content: ""; position: absolute; inset: 0; transform: scaleX(var(--progress, 0)); transform-origin: left; background: #e7bc7820; }
+    #attackBtn svg { width: 21px; height: 24px; color: #e4c8a3; }
+    .attack-label { position: relative; font-family: Georgia, "Times New Roman", serif; font-size: 21px; letter-spacing: .045em; }
+    .keycap { position: absolute; right: 13px; top: 23px; color: #d1ac8e; border: 1px solid #d1ac8e44; border-radius: 2px; padding: 2px 4px; font: 7px -apple-system, sans-serif; letter-spacing: .06em; }
+    .action-hint { color: #747b6b; font-size: 8px; letter-spacing: .06em; margin-top: 13px; }
+    .footer { position: absolute; bottom: 41px; left: 59px; right: 59px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
+    .orbit-hint { display: flex; align-items: center; gap: 10px; font-size: 9px; color: #818878; }
+    .orbit-hint svg { width: 19px; height: 19px; color: #a4aa94; }
+    .orbit-hint b { font-weight: 400; opacity: .4; padding: 0 5px; }
+    .scene-caption { color: #626b5c; margin-top: 10px; font-size: 8px; letter-spacing: .05em; }
+    .strike-count { font-family: Georgia, "Times New Roman", serif; font-size: 26px; color: #adb199; text-align: right; font-variant-numeric: tabular-nums; }
+    .strike-caption { font-size: 8px; letter-spacing: .15em; color: #737c68; margin-top: 4px; }
+    #flash { position: absolute; inset: 0; opacity: 0; background: #ffdba7; pointer-events: none; }
+    #loading { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #151713; transition: opacity .55s; }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .loading-mark { color: var(--gold); width: 36px; height: 42px; margin-bottom: 22px; animation: breathe 1.5s infinite alternate; }
+    .loading-title { font-family: Georgia, "Times New Roman", serif; font-size: 22px; letter-spacing: .15em; }
+    #loadingMessage { margin: 13px 24px 0; max-width: 360px; font-size: 11px; line-height: 1.7; text-align: center; color: var(--muted); }
+    #retryBtn { display: none; margin-top: 23px; padding: 10px 20px; background: #75352a; border: 1px solid #a25c3e; border-radius: 3px; }
+    @keyframes breathe { from { opacity: .4; } to { opacity: 1; } }
+    @media (min-width: 1700px) { .introduction, .equipment { left: 5%; } .attributes, .specimen { right: 5%; } }
+    @media (max-width: 1100px) { .topbar { padding: 0 38px; } .introduction, .equipment { left: 40px; } .lore { max-width: 180px; font-size: 11px; } .equipment { width: 185px; } .attributes, .specimen { right: 40px; width: 114px; } .attribute-track { gap: 2px; } .attribute-track i { width: 9px; } .footer { left: 40px; right: 40px; } h1 { font-size: 59px; } }
+    @media (max-width: 800px) { .frame { inset: 12px; } .topbar { height: 87px; padding: 0 27px; } .brand-name { font-size: 14px; } .brand-sub { font-size: 7px; } .brand-mark { width: 25px; height: 31px; } .top-controls { gap: 17px; } .utility span { display: none; } .utility { padding: 10px 4px; } .utility svg { width: 17px; height: 17px; } .utility-divider { display: none; } .introduction { left: 28px; top: 112px; } .eyebrow { font-size: 8px; letter-spacing: .18em; } h1 { margin-top: 11px; margin-bottom: 7px; font-size: 48px; } .clan { font-size: 15px; } .character-tags { margin-top: 14px; } .tag { font-size: 7px; padding: 5px 7px; } .lore, .equipment, .attributes { display: none; } .specimen { top: 123px; right: 29px; width: auto; } .specimen-number { font-size: 22px; } .specimen-label { font-size: 7px; } .action { left: 50%; bottom: 91px; } #attackBtn { min-width: 213px; height: 58px; } .readiness { margin-bottom: 12px; } .footer { left: 28px; right: 28px; bottom: 32px; } .orbit-hint { font-size: 8px; gap: 7px; } .scene-caption { display: none; } .strike-count { font-size: 22px; } .strike-caption { font-size: 7px; } }
+    @media (max-width: 480px) { .brand { gap: 10px; } .brand-name { font-size: 12px; letter-spacing: .17em; } .brand-sub { letter-spacing: .21em; } .top-controls { gap: 12px; } .specimen-label { max-width: 65px; line-height: 1.6; } .action-hint { display: none; } .action { bottom: 89px; } .orbit-hint { max-width: 240px; flex-wrap: wrap; } .orbit-hint svg { width: 16px; height: 16px; } .strike-caption { letter-spacing: .10em; } }
+    @media (max-height: 650px) and (min-width: 801px) { .topbar { height: 76px; } .introduction { top: 22%; } .lore { display: none; } h1 { font-size: 52px; } .character-tags { margin-top: 16px; } .equipment { bottom: 23%; } .action { bottom: 55px; } #attackBtn { height: 50px; } .readiness { margin-bottom: 10px; } .action-hint { display: none; } .footer { bottom: 30px; } .attributes { top: 32%; } .specimen { top: 98px; } }
+    @media (max-height: 520px) and (max-width: 800px) { .introduction { top: 88px; } h1 { font-size: 35px; } .character-tags, .specimen { display: none; } .action { left: auto; right: 26px; bottom: 63px; transform: none; } .readiness { display: none; } #attackBtn { min-width: 175px; height: 49px; } .keycap { top: 18px; } .footer { bottom: 24px; } .clan { font-size: 12px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <main aria-label="Ironfang, an interactive 3D orc warrior">
+    <div id="scene" aria-label="3D character. Drag to rotate, scroll or pinch to zoom."></div>
+    <div class="vignette"></div>
+    <div class="frame"></div>
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 36 42" fill="none" aria-hidden="true"><path d="M10 35 26 7M9 7 25 35" stroke="currentColor" stroke-width="2"/><path d="m20 10 5-6c8 4 9 10 8 15l-10-3M16 10l-5-6C3 8 2 14 3 19l10-3" stroke="currentColor" stroke-width="1.5"/><path d="m15 29 6 0M14 33h8" stroke="currentColor"/><circle cx="18" cy="21" r="3" fill="currentColor"/></svg>
+        <div class="brand-name">THE WARFORGE<span class="brand-sub">A CHARACTER COLLECTION</span></div>
+      </div>
+      <div class="top-controls">
+        <button class="utility" id="soundBtn" aria-label="Mute sound" aria-pressed="true" title="Toggle sound">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 8h3l4-4v12l-4-4H3V8Z" stroke="currentColor" stroke-width="1.3"/><path id="soundWaves" d="M13 7c2 1 2 5 0 6m3-9c4 3 4 9 0 12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="soundLabel">SOUND ON</span>
+        </button>
+        <div class="utility-divider"></div>
+        <button class="utility" id="resetBtn" aria-label="Reset camera view" title="Reset view (R)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 8a6.4 6.4 0 1 1-.1 4M4 3v5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>RESET VIEW</span></button>
+      </div>
+    </header>
+    <section class="introduction" aria-labelledby="characterName">
+      <p class="eyebrow">MEET YOUR NEXT ADVERSARY</p>
+      <h1 id="characterName">Ironfang</h1>
+      <p class="clan">Of the Ashen Clan</p>
+      <div class="character-tags"><span class="tag">ORC WARRIOR</span><span class="tag">LEVEL 24</span></div>
+      <p class="lore">Forged in battle. Tempered by fury.<br>A warrior of few words — and<br>one very persuasive axe.</p>
+    </section>
+    <aside class="equipment" aria-label="Equipped weapon">
+      <div class="section-label">WEAPON OF CHOICE</div>
+      <div class="weapon">
+        <svg class="weapon-icon" viewBox="0 0 32 42" fill="none" aria-hidden="true"><path d="m11 37 11-31" stroke="currentColor" stroke-width="2.5"/><path d="m19 10-7-5C4 9 4 16 7 22l9-3m6-9 6 1c5 6 3 12-1 16l-8-7" stroke="currentColor" stroke-width="1.3"/><path d="m13 28 4 1m-5 2 4 2" stroke="currentColor"/></svg>
+        <div><div class="weapon-name">Ashcleaver</div><div class="weapon-detail">Two edges. One intention.</div></div>
+      </div>
+    </aside>
+    <div class="specimen" aria-label="Character 001"><div class="specimen-number">001<span style="font-size:12px; opacity:.4"> / </span></div><div class="specimen-label">THE ASHEN SERIES</div></div>
+    <aside class="attributes" aria-label="Character attributes">
+      <div class="section-label">BUILT FOR BATTLE</div>
+      <div class="attribute" aria-label="Strength 9 out of 10"><div class="attribute-heading"><span>Strength</span><span>09</span></div><div class="attribute-track" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="empty"></i></div></div>
+      <div class="attribute" aria-label="Endurance 7 out of 10"><div class="attribute-heading"><span>Endurance</span><span>07</span></div><div class="attribute-track" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="empty"></i><i class="empty"></i><i class="empty"></i></div></div>
+      <div class="attribute" aria-label="Ferocity 10 out of 10"><div class="attribute-heading"><span>Ferocity</span><span>10</span></div><div class="attribute-track" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    </aside>
+    <div class="action">
+      <div class="readiness" id="readiness"><span class="status-dot"></span><span id="attackStatus" role="status" aria-live="polite">READY FOR BATTLE</span></div>
+      <button id="attackBtn" disabled aria-label="Attack! Swing the battle axe">
+        <svg viewBox="0 0 25 28" fill="none" aria-hidden="true"><path d="M8 25 18 3" stroke="currentColor" stroke-width="1.6"/><path d="m15 5-5-3C4 5 3 10 5 14l8-2m5-6 4 1c3 4 2 8-1 11l-5-5" stroke="currentColor" stroke-width="1.3"/><path d="m9 19 4 2m-6 2 4 2" stroke="currentColor"/></svg>
+        <span class="attack-label" id="attackLabel">Attack!</span><span class="keycap" aria-hidden="true">SPACE</span>
+      </button>
+      <div class="action-hint">Go on. He’s been waiting for this.</div>
+    </div>
+    <footer class="footer">
+      <div><div class="orbit-hint"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(-30 12 12)" stroke="currentColor" stroke-width="1"/><path d="m17 3 3 2-3 1" stroke="currentColor" stroke-width="1"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span>Drag to rotate <b>·</b> Scroll to zoom</span></div><div class="scene-caption">Orc Warrior — Click to Attack</div></div>
+      <div><div class="strike-count" id="strikeCount">00</div><div class="strike-caption">STRIKES LANDED</div></div>
+    </footer>
+    <div id="flash" aria-hidden="true"></div>
+    <div id="loading" role="status">
+      <svg class="loading-mark" viewBox="0 0 36 42" fill="none" aria-hidden="true"><path d="M10 35 26 7M9 7 25 35" stroke="currentColor" stroke-width="2"/><path d="m20 10 5-6c8 4 9 10 8 15l-10-3M16 10l-5-6C3 8 2 14 3 19l10-3" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="21" r="3" fill="currentColor"/></svg>
+      <div class="loading-title">THE WARFORGE</div><p id="loadingMessage">Waking the warrior…</p><button id="retryBtn" onclick="location.reload()">Try again</button>
+    </div>
+    <noscript><style>#loadingMessage { display:none; }</style><p style="position:absolute;top:55%;width:100%;text-align:center;z-index:11">Enable JavaScript to meet Ironfang.</p></noscript>
+  </main>
+
+  <script type="module">
+    // The CDN supplies only Three.js. Every visible object is built below.
+    async function boot() {
+      const THREE = await import('three');
+      const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+      const mount = document.getElementById('scene');
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.12;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      mount.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x151713);
+      scene.fog = new THREE.FogExp2(0x151713, .038);
+      const baseFov = 34;
+      const camera = new THREE.PerspectiveCamera(baseFov, innerWidth / innerHeight, .1, 80);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = .075;
+      controls.enablePan = false;
+      controls.minPolarAngle = .42;
+      controls.maxPolarAngle = Math.PI / 2 - .045;
+      controls.rotateSpeed = .65;
+      controls.zoomSpeed = .75;
+      const clock = new THREE.Clock();
+      const homeCamera = new THREE.Vector3();
+      const homeTarget = new THREE.Vector3(0, 1.82, 0);
+      let elapsed = 0, isAttacking = false, attackTime = 0, impactFired = false;
+      let strikes = 0, shakeRemaining = 0, flashRemaining = 0, resetTween = null;
+      let soundEnabled = true, audioContext = null;
+      let currentStatus = 'READY FOR BATTLE';
+      const effects = [], trailSamples = [];
+      const tempA = new THREE.Vector3(), tempB = new THREE.Vector3();
+      const cameraBeforeShake = new THREE.Vector3();
+      const attackBtn = document.getElementById('attackBtn');
+      const attackLabel = document.getElementById('attackLabel');
+      const status = document.getElementById('attackStatus');
+      const readiness = document.getElementById('readiness');
+      const flash = document.getElementById('flash');
+
+      // Flat facets, warm steel, dark leather, and the original green skin.
+      const material = (color, options = {}) => new THREE.MeshStandardMaterial({ color, roughness: .82, flatShading: true, ...options });
+      const mats = {
+        skin: material(0x4a7c3a), skinLight: material(0x5b8745), skinDark: material(0x3c6231),
+        leather: material(0x342b21), leatherLight: material(0x55412b), cloth: material(0x753b2d),
+        iron: material(0x414a48, { metalness: .75, roughness: .43 }),
+        steel: material(0x8a8f98, { metalness: .70, roughness: .36 }),
+        edge: material(0xc1c6bd, { metalness: .9, roughness: .22 }),
+        bronze: material(0xb69a61, { metalness: .7, roughness: .45 }),
+        bone: material(0xe1d4ad, { roughness: .66 }), hair: material(0x21251c),
+        eye: material(0xede7cc, { roughness: .4 }), pupil: material(0x151810),
+        iris: material(0xe8aa4b, { emissive: 0x8d430c, emissiveIntensity: .2 }),
+        mouth: material(0x23271a), wood: material(0x6b4a2d), stone: material(0x30342a),
+        stoneDark: material(0x20251f), rune: material(0xd7a258, { emissive: 0xa95823, emissiveIntensity: .7, metalness: .3 }),
+      };
+      const group = (name, parent, x = 0, y = 0, z = 0) => {
+        const g = new THREE.Group(); g.name = name; g.position.set(x, y, z); parent?.add(g); return g;
+      };
+      const mesh = (geometry, mat, parent, x = 0, y = 0, z = 0) => {
+        const m = new THREE.Mesh(geometry, mat); m.position.set(x, y, z);
+        m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+      };
+      const box = (parent, mat, w, h, d, x = 0, y = 0, z = 0) => mesh(new THREE.BoxGeometry(w, h, d), mat, parent, x, y, z);
+      const sphere = (parent, mat, r, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1, segments = 10) => {
+        const m = mesh(new THREE.SphereGeometry(r, segments, 7), mat, parent, x, y, z); m.scale.set(sx, sy, sz); return m;
+      };
+      const cylinder = (parent, mat, top, bottom, height, x = 0, y = 0, z = 0, segments = 10) => mesh(new THREE.CylinderGeometry(top, bottom, height, segments), mat, parent, x, y, z);
+      const ring = (parent, mat, radius, tube, x = 0, y = 0, z = 0) => {
+        const m = mesh(new THREE.TorusGeometry(radius, tube, 5, 24), mat, parent, x, y, z); m.rotation.x = Math.PI / 2; return m;
+      };
+      const spike = (parent, height, radius, x, y, z, rx = 0, rz = 0, mat = mats.bone) => {
+        const s = mesh(new THREE.ConeGeometry(radius, height, 6), mat, parent, x, y, z); s.rotation.set(rx, 0, rz); return s;
+      };
+
+      function createGrip(hand) {
+        // The shaft crosses the palm along Y; four curled fingers and an opposed
+        // thumb enclose the leather wrap instead of sitting in front of it.
+        sphere(hand, mats.skin, .21, 0, 0, -.11, 1.08, 1.12, .64, 8);
+        sphere(hand, mats.skinDark, .13, 0, 0, -.20, 1, .9, .95, 8);
+        for (let finger = 0; finger < 4; finger++) {
+          const points = [];
+          for (let j = 0; j <= 8; j++) {
+            const a = -.6 * Math.PI + j / 8 * 1.5 * Math.PI;
+            points.push(new THREE.Vector3(Math.cos(a) * .128, -.135 + finger * .09, Math.sin(a) * .128));
+          }
+          mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 12, .047, 5, false), mats.skinLight, hand);
+        }
+        const thumb = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-.17, .14, -.08), new THREE.Vector3(-.13, .13, .065),
+          new THREE.Vector3(-.04, .08, .174), new THREE.Vector3(.065, .045, .135),
+        ]);
+        mesh(new THREE.TubeGeometry(thumb, 10, .059, 6, false), mats.skin, hand);
+      }
+
+      function setupLights() {
+        scene.add(new THREE.HemisphereLight(0xc8cfb3, 0x292719, 1.25));
+        const key = new THREE.DirectionalLight(0xffe5bd, 3.0);
+        key.position.set(-3.5, 7, 5); key.castShadow = true;
+        key.shadow.mapSize.set(2048, 2048);
+        Object.assign(key.shadow.camera, { left: -5, right: 5, top: 7, bottom: -4, near: .5, far: 20 });
+        key.shadow.normalBias = .035; key.shadow.bias = -.00025;
+        scene.add(key);
+        const fill = new THREE.DirectionalLight(0xc1d6d2, 1.25); fill.position.set(5, 3, 4); scene.add(fill);
+        const rim = new THREE.DirectionalLight(0xffa563, 3.1); rim.position.set(-2, 3.8, -4); rim.target.position.set(0, 2.4, 0); scene.add(rim, rim.target);
+        const glow = new THREE.PointLight(0xee7e37, 18, 7, 2); glow.position.set(-2.5, 2, -1.5); scene.add(glow);
+
+        // A procedural studio environment gives the metal real reflections.
+        const studio = new THREE.Scene(); studio.background = new THREE.Color(0x51594e);
+        for (const [color, pos, scale] of [
+          [0xf4e3c0, [-6, 4, 3], [2, 7, 5]], [0x93a8a6, [6, 2, -2], [2, 6, 5]], [0xc07743, [-1, 5, -7], [7, 3, 1]],
+        ]) {
+          const panel = new THREE.Mesh(new THREE.BoxGeometry(...scale), new THREE.MeshBasicMaterial({ color }));
+          panel.position.set(...pos); studio.add(panel);
+        }
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmrem.fromScene(studio, .025).texture;
+        pmrem.dispose();
+        studio.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+        Object.values(mats).forEach(m => { m.envMapIntensity = .38; });
+        mats.steel.envMapIntensity = .95; mats.edge.envMapIntensity = 1.1;
+        mats.iron.envMapIntensity = .75; mats.bronze.envMapIntensity = .65;
+      }
+
+      function createStage() {
+        const stage = group('Stone display plinth', scene);
+        cylinder(stage, mats.stoneDark, 1.69, 1.77, .16, 0, -.02, 0, 64);
+        cylinder(stage, mats.stone, 1.62, 1.68, .07, 0, .085, 0, 64);
+        ring(stage, mats.bronze, 1.645, .013, 0, .105, 0);
+        ring(stage, mats.stoneDark, 1.47, .017, 0, .125, 0);
+        for (let i = 0; i < 40; i++) {
+          const a = i / 40 * Math.PI * 2;
+          const tick = box(stage, i % 5 === 0 ? mats.bronze : mats.stoneDark, .012, .004, i % 5 === 0 ? .075 : .035, Math.sin(a) * 1.55, .123, Math.cos(a) * 1.55);
+          tick.rotation.y = a;
+        }
+        const floor = mesh(new THREE.CircleGeometry(70, 80), material(0x0d1510, { roughness: 1, envMapIntensity: .04 }), scene, 0, -.13, 0);
+        floor.rotation.x = -Math.PI / 2; floor.castShadow = false;
+        for (let i = 0; i < 16; i++) {
+          const a = i * 2.39996, r = 1.9 + (i % 4) * .2;
+          const rock = mesh(new THREE.DodecahedronGeometry(.07 + (i % 3) * .025), mats.stoneDark, scene, Math.cos(a) * r, -.07, Math.sin(a) * r);
+          rock.scale.set(1.4, .5, 1); rock.rotation.set(i, i * 1.2, i * .3);
+        }
+      }
+
+      function createAxe(parent) {
+        const axe = group('Ashcleaver — double-bladed battle axe', parent);
+        // This transform never changes: the fist and weapon form one rigid grip.
+        axe.rotation.y = -Math.PI / 2;
+        cylinder(axe, mats.wood, .055, .07, 1.72, 0, .30);
+        for (let i = 0; i < 9; i++) ring(axe, mats.leather, .061, .016, 0, -.19 + i * .047);
+        cylinder(axe, mats.bronze, .087, .087, .08, 0, -.52);
+        spike(axe, .15, .083, 0, -.63, 0, 0, Math.PI, mats.iron);
+        cylinder(axe, mats.bronze, .074, .074, .065, 0, .60);
+        const head = group('Forged crescent blades', axe, 0, 1.01);
+        box(head, mats.iron, .22, .49, .26);
+        box(head, mats.bronze, .24, .045, .28, 0, .25);
+        box(head, mats.bronze, .24, .045, .28, 0, -.25);
+        for (const side of [-1, 1]) {
+          const shape = new THREE.Shape();
+          shape.moveTo(.08, .20); shape.lineTo(.24, .21);
+          shape.quadraticCurveTo(.43, .28, .62, .43);
+          shape.quadraticCurveTo(.79, 0, .62, -.43);
+          shape.quadraticCurveTo(.44, -.28, .24, -.20);
+          shape.lineTo(.08, -.20); shape.closePath();
+          const blade = mesh(new THREE.ExtrudeGeometry(shape, { depth: .13, bevelEnabled: true, bevelThickness: .025, bevelSize: .018, bevelSegments: 1, steps: 1, curveSegments: 8 }), mats.steel, head, 0, 0, -.065);
+          blade.scale.x = side;
+          const edge = new THREE.Shape();
+          edge.moveTo(.62, .43); edge.quadraticCurveTo(.79, 0, .62, -.43);
+          edge.lineTo(.565, -.36); edge.quadraticCurveTo(.70, 0, .565, .36); edge.closePath();
+          const bevel = mesh(new THREE.ExtrudeGeometry(edge, { depth: .147, bevelEnabled: false, curveSegments: 10 }), mats.edge, head, 0, 0, -.0735); bevel.scale.x = side;
+          const inset = box(head, mats.iron, .19, .035, .012, side * .36, .11, .092); inset.rotation.z = side * .38;
+          const runeA = box(head, mats.rune, .017, .125, .012, side * .35, 0, .093); runeA.rotation.z = side * .2;
+          const runeB = box(head, mats.rune, .083, .015, .012, side * .37, .01, .096); runeB.rotation.z = side * -.30;
+        }
+        sphere(head, mats.bronze, .055, 0, 0, .16, 1, 1, .5, 8);
+        spike(axe, .25, .084, 0, 1.39, 0, 0, 0, mats.steel);
+        const impactTip = group('Cutting edge contact', axe, .62, 1.44, 0);
+        const trailInner = group('Cutting edge heel', axe, .62, .58, 0);
+        return { axe, impactTip, trailInner };
+      }
+
+      function createOrc() {
+        const orc = group('orc', scene, 0, .13, 0);
+        const hips = group('hips', orc, 0, 1.47, 0);
+        const torso = group('torso', hips);
+        const body = cylinder(torso, mats.skin, .65, .43, 1.04, 0, .52, 0, 8); body.scale.set(1.12, 1, .72);
+        for (const side of [-1, 1]) {
+          sphere(torso, mats.skinLight, .39, side * .29, .72, .265, 1.02, .78, .63);
+          sphere(torso, mats.skin, .24, side * .14, .35, .29, .78, 1, .38, 8);
+        }
+        cylinder(torso, mats.skinDark, .24, .3, .28, 0, 1.13, 0);
+        const strap = box(torso, mats.leather, .145, 1.23, .075, -.025, .60, .443); strap.rotation.z = -.72;
+        const backStrap = box(torso, mats.leather, .145, 1.2, .075, -.025, .60, -.385); backStrap.rotation.z = -.72;
+        for (let i = 0; i < 7; i++) sphere(torso, mats.bronze, .025, -.34 + i * .105, .18 + i * .12, .485, 1, 1, .5, 6);
+        const chestBuckle = box(torso, mats.bronze, .19, .20, .065, .12, .77, .487); chestBuckle.rotation.z = -.72;
+        const buckleInset = box(torso, mats.leather, .105, .12, .073, .12, .77, .50); buckleInset.rotation.z = -.72;
+
+        // A broad jaw, narrowed eyes, tusks, pointed ears, and a tied topknot.
+        const head = group('head', torso, 0, 1.38, .015);
+        sphere(head, mats.skin, .46, 0, .16, 0, 1.04, 1.13, .91);
+        sphere(head, mats.skinLight, .43, 0, -.085, .19, 1.05, .67, .94, 8);
+        box(head, mats.skin, .63, .20, .29, 0, -.075, .435);
+        box(head, mats.mouth, .52, .032, .025, 0, -.091, .590);
+        box(head, mats.skinDark, .51, .069, .06, 0, -.16, .58);
+        for (const side of [-1, 1]) {
+          sphere(head, mats.skinDark, .15, side * .31, .08, .32, 1, .85, .75, 8);
+          sphere(head, mats.eye, .104, side * .208, .237, .382, 1, .60, .66, 10);
+          sphere(head, mats.iris, .049, side * .208 - .012, .237, .445, 1, 1, .4, 8);
+          sphere(head, mats.pupil, .026, side * .208 - .012, .237, .465, 1, 1, .3, 8);
+          const brow = box(head, mats.skinDark, .29, .115, .18, side * .21, .315, .382); brow.rotation.z = side * .17;
+          spike(head, .31, .073, side * .225, -.005, .617, .14, side * -.16);
+          const ear = spike(head, .49, .19, side * .57, .22, -.015, -.10, side * -1.15, mats.skin);
+          ear.scale.z = .58;
+          const innerEar = spike(head, .27, .105, side * .58, .225, .071, -.1, side * -1.15, mats.skinDark); innerEar.scale.z = .28;
+          sphere(head, mats.skin, .056, side * .07, .102, .569, 1, .70, .6, 8);
+          sphere(head, mats.mouth, .025, side * .070, .075, .594, 1, .5, .5, 6);
+        }
+        sphere(head, mats.skinLight, .14, 0, .144, .47, .85, .92, 1.01, 8);
+        const earPiercing = mesh(new THREE.TorusGeometry(.082, .018, 5, 12), mats.bronze, head, .58, .045, .036);
+        earPiercing.rotation.y = .3;
+        const hairCap = mesh(new THREE.SphereGeometry(.425, 10, 4, 0, Math.PI * 2, 0, Math.PI * .44), mats.hair, head, 0, .27, -.023); hairCap.scale.set(.97, .94, .96);
+        const knot = group('Warrior topknot', head, 0, .70, -.10);
+        sphere(knot, mats.hair, .165, 0, .04, 0, .75, 1.13, 1.1, 7);
+        ring(knot, mats.bronze, .102, .023, 0, -.035);
+        const tail = sphere(knot, mats.hair, .155, 0, .12, -.12, .7, 1.1, 1.1, 7); tail.rotation.x = -.7;
+        for (let i = 0; i < 3; i++) {
+          const paint = box(head, mats.cloth, .041, .13 - i * .021, .021, .285 + i * .044, .035 - i * .012, .430 - i * .031); paint.rotation.z = -.18;
+        }
+
+        // Shoulder → elbow → hand hierarchies keep the axe attached in every pose.
+        const limbs = {};
+        for (const [side, name] of [[-1, 'right'], [1, 'left']]) {
+          const arm = group(name + 'ArmGroup', torso, side * .70, .98, 0);
+          arm.rotation.z = side * .19; arm.rotation.x = -.08;
+          sphere(arm, mats.skin, .30, 0, -.065, 0, 1.03, 1, 1.02);
+          cylinder(arm, mats.skin, .225, .19, .56, 0, -.31);
+          sphere(arm, mats.skinLight, .245, 0, -.29, .025, .97, 1.30, .94, 8);
+          const forearm = group(name + 'ForearmGroup', arm, 0, -.59, 0); forearm.rotation.x = -.16;
+          sphere(forearm, mats.skinDark, .198);
+          cylinder(forearm, mats.skin, .20, .23, .52, 0, -.28);
+          cylinder(forearm, mats.leather, .224, .247, .35, 0, -.29);
+          ring(forearm, mats.bronze, .228, .026, 0, -.105);
+          ring(forearm, mats.bronze, .25, .026, 0, -.466);
+          const plate = box(forearm, mats.iron, .26, .29, .095, 0, -.27, .215); plate.rotation.x = -.05;
+          for (const j of [-1, 1]) sphere(forearm, mats.bronze, .03, j * .087, -.17, .272, 1, 1, .5, 6);
+          if (side === 1) for (let j = 0; j < 3; j++) spike(forearm, .23, .059, .14, -.16 - j * .10, .16, .9, -.65);
+          const hand = group(name + 'HandGroup', forearm, 0, -.575, 0); hand.rotation.x = .24;
+          if (side === -1) {
+            createGrip(hand);
+          } else {
+            sphere(hand, mats.skin, .237, 0, -.04, .017, 1, 1, .83, 8);
+            for (let j = 0; j < 3; j++) box(hand, mats.skinLight, .105, .086, .13, -.105 + j * .105, -.07, .174);
+            sphere(hand, mats.skinDark, .098, side * .18, -.001, .115, .75, 1, 1, 7);
+          }
+          const pauldron = mesh(new THREE.SphereGeometry(side === 1 ? .39 : .32, 8, 4, 0, Math.PI * 2, 0, Math.PI * .58), mats.iron, arm, side * .03, .09, 0);
+          pauldron.scale.set(1.16, .72, 1.12);
+          ring(arm, mats.bronze, side === 1 ? .383 : .315, .028, side * .03, .034);
+          if (side === 1) {
+            for (let j = 0; j < 5; j++) {
+              const a = (j - 2) * .58;
+              spike(arm, .30 + (j % 2) * .075, .082, Math.sin(a) * .29, .34 - Math.abs(j - 2) * .037, Math.cos(a) * .17, .14, -a * .45);
+            }
+          } else {
+            for (let j = 0; j < 3; j++) sphere(arm, mats.bronze, .034, -.21 + j * .20, .12, .284, 1, 1, .6, 6);
+          }
+          limbs[name + 'ArmGroup'] = arm; limbs[name + 'ForearmGroup'] = forearm; limbs[name + 'HandGroup'] = hand;
+        }
+        const axeParts = createAxe(limbs.rightHandGroup);
+
+        const belt = cylinder(hips, mats.leather, .49, .48, .18, 0, .05, 0, 10); belt.scale.z = .76;
+        ring(hips, mats.bronze, .479, .024, 0, .125).scale.z = .76;
+        box(hips, mats.bronze, .28, .235, .11, 0, .03, .395);
+        box(hips, mats.iron, .205, .165, .125, 0, .03, .405);
+        sphere(hips, mats.bone, .087, 0, .043, .482, .9, 1.1, .40, 7);
+        for (const side of [-1, 1]) sphere(hips, mats.mouth, .024, side * .032, .053, .515, 1, .8, .3, 6);
+        const clothShape = new THREE.Shape(); clothShape.moveTo(-.28, 0); clothShape.lineTo(.28, 0); clothShape.lineTo(.24, -.58); clothShape.lineTo(0, -.74); clothShape.lineTo(-.25, -.58); clothShape.closePath();
+        const loincloth = group('loincloth', hips, 0, -.05, .375);
+        mesh(new THREE.ExtrudeGeometry(clothShape, { depth: .045, bevelEnabled: false }), mats.cloth, loincloth);
+        for (const side of [-1, 1]) {
+          const strip = box(hips, mats.leatherLight, .10, .60, .06, side * .34, -.34, .27); strip.rotation.z = side * .18;
+          box(hips, mats.bronze, .067, .025, .066, side * .35, -.19, .308);
+          const hip = group(side === -1 ? 'rightLegGroup' : 'leftLegGroup', hips, side * .32, -.05, 0);
+          hip.rotation.z = side * -.07;
+          cylinder(hip, mats.skin, .255, .225, .58, 0, -.29);
+          const knee = group(side === -1 ? 'rightKneeGroup' : 'leftKneeGroup', hip, 0, -.58, 0);
+          sphere(knee, mats.skinDark, .226);
+          cylinder(knee, mats.skin, .19, .16, .53, 0, -.29);
+          const kneePlate = mesh(new THREE.DodecahedronGeometry(.245, 0), mats.iron, knee, 0, -.015, .14); kneePlate.scale.set(.88, 1, .48);
+          sphere(knee, mats.bronze, .041, 0, .014, .268, 1, 1, .4, 6);
+          cylinder(knee, mats.leather, .195, .22, .29, 0, -.40);
+          ring(knee, mats.bronze, .196, .023, 0, -.26);
+          ring(knee, mats.leatherLight, .215, .027, 0, -.48);
+          const foot = group(side === -1 ? 'rightFootGroup' : 'leftFootGroup', knee, 0, -.60, 0);
+          box(foot, mats.leather, .43, .34, .59, 0, -.09, .085);
+          box(foot, mats.iron, .45, .17, .35, 0, -.063, .256);
+          box(foot, mats.stoneDark, .45, .075, .61, 0, -.245, .085);
+          for (const j of [-1, 1]) sphere(foot, mats.bronze, .027, j * .145, 0, .433, 1, 1, .5, 6);
+          limbs[side === -1 ? 'rightLegGroup' : 'leftLegGroup'] = hip;
+          limbs[side === -1 ? 'rightKneeGroup' : 'leftKneeGroup'] = knee;
+          limbs[side === -1 ? 'rightFootGroup' : 'leftFootGroup'] = foot;
+        }
+        const animated = { orc, hips, torso, head, loincloth, ...limbs };
+        for (const part of Object.values(animated)) {
+          part.userData.restRotation = part.rotation.clone();
+          part.userData.restPosition = part.position.clone();
+        }
+        return { ...animated, ...axeParts };
+      }
+
+      setupLights(); createStage();
+      const character = createOrc();
+
+      // Sparse embers drift around the display without any texture assets.
+      const emberPositions = new Float32Array(42 * 3);
+      for (let i = 0; i < 42; i++) { emberPositions[i * 3] = Math.sin(i * 3.7) * 3.2; emberPositions[i * 3 + 1] = (i * .37) % 5; emberPositions[i * 3 + 2] = -1 - (i * .73) % 3; }
+      const emberGeometry = new THREE.BufferGeometry(); emberGeometry.setAttribute('position', new THREE.BufferAttribute(emberPositions, 3));
+      const embers = new THREE.Points(emberGeometry, new THREE.PointsMaterial({ color: 0xc19c62, size: .018, transparent: true, opacity: .45, depthWrite: false, blending: THREE.AdditiveBlending })); scene.add(embers);
+      const trailGeometry = new THREE.BufferGeometry();
+      const trailMaterial = new THREE.MeshBasicMaterial({ color: 0xf6c384, transparent: true, opacity: .24, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+      const trail = new THREE.Mesh(trailGeometry, trailMaterial); trail.frustumCulled = false; trail.visible = false; scene.add(trail);
+
+      const attackTiming = { windup: .42, drive: .52, impact: .66, hold: .73, follow: .87, duration: 1.48 };
+      const neutralPose = {
+        hipX: 0, hipY: 0, hipZ: 0, hipPitch: 0, hipYaw: 0, hipRoll: 0,
+        torsoPitch: 0, torsoYaw: 0, torsoRoll: 0, headPitch: 0, headYaw: 0,
+        leftPitch: 0, leftYaw: 0, leftRoll: 0, leftElbow: 0, leftWrist: 0,
+        gripX: -.92, gripY: 1.85, gripZ: .56, shaftAngle: .12, planeYaw: 0, bladeRoll: -.35,
+        rightFootZ: -.07, rightFootYaw: -.06, rightFootPitch: 0, rightFootLift: 0,
+        leftFootZ: .10, leftFootYaw: .08, leftFootPitch: 0, leftFootLift: 0,
+        clothPitch: 0, fov: 0,
+      };
+      const contactPose = {
+        hipX: .05, hipY: -.20, hipZ: .10, hipPitch: .055, hipYaw: .24, hipRoll: .035,
+        torsoPitch: .32, torsoYaw: .22, headPitch: -.26,
+        leftPitch: .16, leftYaw: .15, leftRoll: .48, leftElbow: -.42, leftWrist: -.08,
+        gripX: -.72, gripY: 1.11, gripZ: .35, shaftAngle: 1.94, planeYaw: .08, bladeRoll: -Math.PI / 2,
+        rightFootPitch: .24, rightFootYaw: .06, leftFootZ: .40,
+        clothPitch: .12, fov: 5,
+      };
+      // Load the rear leg, step and drive the hips first, then release the axe.
+      // Blade roll is finished before the chop; the weapon never spins in the fist.
+      const swing = [
+        { t: 0 },
+        { t: .18, ease: 'out', hipX: -.04, hipY: -.09, hipZ: -.05, hipYaw: -.15,
+          torsoPitch: -.06, torsoYaw: -.18, headPitch: .02, leftPitch: -.15, leftElbow: -.35, leftRoll: .14,
+          gripY: 1.98, gripZ: .40, shaftAngle: -.18, planeYaw: .08, bladeRoll: -.85,
+          leftFootZ: .15, leftFootLift: .05, clothPitch: -.03, fov: 3 },
+        { t: .42, hipX: -.06, hipY: -.16, hipZ: -.08, hipPitch: -.03, hipYaw: -.29, hipRoll: -.03,
+          torsoPitch: -.16, torsoYaw: -.32, headPitch: .09,
+          leftPitch: -.45, leftYaw: -.10, leftElbow: -.72, leftRoll: .35,
+          gripX: -.80, gripY: 2.98, gripZ: .18, shaftAngle: -.55, planeYaw: .08, bladeRoll: -Math.PI / 2,
+          rightFootPitch: -.04, rightFootYaw: -.10, leftFootZ: .32, leftFootLift: .10, leftFootPitch: -.10,
+          clothPitch: -.07, fov: 7 },
+        { t: .52, hipX: .02, hipY: -.19, hipZ: .05, hipYaw: .06,
+          torsoPitch: .08, torsoYaw: -.10, headPitch: -.06, leftPitch: -.10, leftElbow: -.60, leftRoll: .44,
+          gripX: -.78, gripY: 2.62, gripZ: .43, shaftAngle: -.20, planeYaw: .08, bladeRoll: -Math.PI / 2,
+          rightFootPitch: .10, rightFootYaw: .02, leftFootZ: .39, leftFootLift: .015,
+          clothPitch: .02, fov: 7 },
+        { t: .66, ease: 'in', ...contactPose },
+        { t: .73, ease: 'linear', ...contactPose, hipY: -.22, torsoPitch: .34 },
+        { t: .87, ...contactPose, hipX: .07, hipY: -.20, hipZ: .16, hipYaw: .34,
+          torsoPitch: .37, torsoYaw: .20, headPitch: -.28, leftPitch: .27, leftRoll: .53,
+          gripY: 1.30, gripZ: .50, shaftAngle: 1.82, rightFootPitch: .28, clothPitch: .22, fov: 4 },
+        { t: 1.13, hipY: -.08, hipZ: .08, hipYaw: .10, torsoPitch: .10, torsoYaw: .04, headPitch: -.07,
+          leftPitch: .08, leftRoll: .18, leftElbow: -.20,
+          gripX: -.84, gripY: 1.75, gripZ: .58, shaftAngle: .50, planeYaw: .04, bladeRoll: -.90,
+          rightFootPitch: .10, leftFootZ: .25, leftFootLift: .09, leftFootPitch: -.12, clothPitch: .10, fov: 1 },
+        { t: 1.48 },
+      ].map(frame => ({ ...neutralPose, ease: 'smooth', ...frame }));
+      const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+      const easeInOutCubic = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const lerp = THREE.MathUtils.lerp;
+
+      function sampleAttackPose(time) {
+        let segment = swing.length - 2;
+        for (let i = 0; i < swing.length - 1; i++) if (time <= swing[i + 1].t) { segment = i; break; }
+        const a = swing[segment], b = swing[segment + 1];
+        const raw = THREE.MathUtils.clamp((time - a.t) / (b.t - a.t), 0, 1);
+        const eased = b.ease === 'in' ? raw * raw : b.ease === 'out' ? easeOutCubic(raw) : b.ease === 'linear' ? raw : easeInOutCubic(raw);
+        const pose = {};
+        for (const key of Object.keys(neutralPose)) pose[key] = lerp(a[key], b[key], eased);
+        return pose;
+      }
+
+      function setWorldQuaternion(part, orientation) {
+        const parentWorld = part.parent.getWorldQuaternion(new THREE.Quaternion());
+        part.quaternion.copy(parentWorld.invert().multiply(orientation));
+        part.updateWorldMatrix(false, true);
+      }
+
+      function solveLimb(upper, lower, targetWorld, poleWorld, upperLength, lowerLength) {
+        // Two-bone IK keeps planted feet on the stone and the arm on the grip.
+        upper.parent.updateWorldMatrix(true, false);
+        const target = upper.parent.worldToLocal(targetWorld.clone());
+        const pole = upper.parent.worldToLocal(poleWorld.clone());
+        const start = upper.position;
+        const direction = target.clone().sub(start);
+        const distance = THREE.MathUtils.clamp(direction.length(), .001, upperLength + lowerLength - .0001);
+        direction.normalize();
+        const bend = pole.sub(start);
+        bend.addScaledVector(direction, -bend.dot(direction));
+        if (bend.lengthSq() < .00001) bend.crossVectors(direction, new THREE.Vector3(1, 0, 0));
+        bend.normalize();
+        const along = (upperLength * upperLength - lowerLength * lowerLength + distance * distance) / (2 * distance);
+        const height = Math.sqrt(Math.max(0, upperLength * upperLength - along * along));
+        const joint = start.clone().addScaledVector(direction, along).addScaledVector(bend, height);
+        const reached = start.clone().addScaledVector(direction, distance);
+        const down = new THREE.Vector3(0, -1, 0);
+        upper.quaternion.setFromUnitVectors(down, joint.clone().sub(start).normalize());
+        const lowerInParent = new THREE.Quaternion().setFromUnitVectors(down, reached.sub(joint).normalize());
+        lower.quaternion.copy(upper.quaternion.clone().invert().multiply(lowerInParent));
+        upper.updateWorldMatrix(false, true);
+      }
+
+      function applyCharacterPose(p) {
+        const c = character;
+        c.hips.position.copy(c.hips.userData.restPosition).add(new THREE.Vector3(p.hipX, p.hipY, p.hipZ));
+        c.hips.rotation.set(p.hipPitch, p.hipYaw, p.hipRoll);
+        c.torso.rotation.set(p.torsoPitch, p.torsoYaw, p.torsoRoll); c.torso.scale.y = 1;
+        c.head.rotation.set(p.headPitch, p.headYaw - (p.hipYaw + p.torsoYaw) * .65, 0);
+        c.loincloth.rotation.x = p.clothPitch;
+        const leftRest = c.leftArmGroup.userData.restRotation;
+        c.leftArmGroup.rotation.set(leftRest.x + p.leftPitch, p.leftYaw, leftRest.z + p.leftRoll);
+        c.leftForearmGroup.rotation.x = c.leftForearmGroup.userData.restRotation.x + p.leftElbow;
+        c.leftHandGroup.rotation.x = c.leftHandGroup.userData.restRotation.x + p.leftWrist;
+        scene.updateMatrixWorld(true);
+        const rootWorld = c.orc.getWorldQuaternion(new THREE.Quaternion());
+
+        for (const [name, side] of [['right', -1], ['left', 1]]) {
+          const pitch = p[name + 'FootPitch'];
+          // Rotate about a supported toe/heel instead of pushing a boot through the floor.
+          const soleBottom = -.2825 * Math.cos(pitch) - (pitch >= 0 ? .39 : -.22) * Math.sin(pitch);
+          const ankleY = .12 - c.orc.position.y - soleBottom + p[name + 'FootLift'];
+          const footLocal = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, p[name + 'FootYaw'], 0, 'YXZ'));
+          const ankle = new THREE.Vector3(side * .40, ankleY, p[name + 'FootZ']);
+          if (name === 'right') {
+            // The rear heel can rise while its toe remains fixed during the push.
+            const toe = new THREE.Vector3(0, -.2825, .39);
+            const plantedToe = toe.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), neutralPose.rightFootYaw);
+            const rotatedToe = toe.applyQuaternion(footLocal);
+            ankle.x += plantedToe.x - rotatedToe.x; ankle.z += plantedToe.z - rotatedToe.z;
+          }
+          const target = c.orc.localToWorld(ankle);
+          const kneePole = c.orc.localToWorld(new THREE.Vector3(side * .43, .80, 1.15));
+          solveLimb(c[name + 'LegGroup'], c[name + 'KneeGroup'], target, kneePole, .58, .60);
+          const footOrientation = rootWorld.clone().multiply(footLocal);
+          setWorldQuaternion(c[name + 'FootGroup'], footOrientation);
+        }
+
+        // Local +X is the cutting edge, +Y the shaft, +Z the blade face normal.
+        // During the chop, bladeRoll=-PI/2 places the edge in the Y/Z swing plane.
+        const weaponWorld = rootWorld.clone()
+          .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.planeYaw))
+          .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), p.shaftAngle))
+          .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.bladeRoll));
+        const handWorld = weaponWorld.clone().multiply(c.axe.quaternion.clone().invert());
+        const grip = c.orc.localToWorld(new THREE.Vector3(p.gripX, p.gripY, p.gripZ));
+        const palmForward = new THREE.Vector3(0, 0, 1).applyQuaternion(handWorld);
+        const elbowPole = grip.clone().addScaledVector(palmForward, -.575);
+        elbowPole.addScaledVector(new THREE.Vector3(1, 0, 0).applyQuaternion(rootWorld), -.12);
+        solveLimb(c.rightArmGroup, c.rightForearmGroup, grip, elbowPole, .59, .575);
+        setWorldQuaternion(c.rightHandGroup, handWorld);
+      }
+
+      applyCharacterPose(neutralPose);
+
+      function setStatus(text) {
+        if (currentStatus === text) return;
+        currentStatus = text; status.textContent = text;
+      }
+
+      function initAudio() {
+        if (!soundEnabled) return;
+        try {
+          const Audio = window.AudioContext || window.webkitAudioContext;
+          if (!Audio) return;
+          audioContext ??= new Audio();
+          if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+        } catch { /* The animation also works when audio is unavailable. */ }
+      }
+
+      function playThud() {
+        if (!soundEnabled || !audioContext || audioContext.state !== 'running') return;
+        const now = audioContext.currentTime;
+        const oscillator = audioContext.createOscillator(), gain = audioContext.createGain();
+        oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(115, now); oscillator.frequency.exponentialRampToValueAtTime(35, now + .16);
+        gain.gain.setValueAtTime(.0001, now); gain.gain.exponentialRampToValueAtTime(.28, now + .008); gain.gain.exponentialRampToValueAtTime(.0001, now + .25);
+        oscillator.connect(gain); gain.connect(audioContext.destination); oscillator.start(now); oscillator.stop(now + .26);
+        oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+        const buffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * .17), audioContext.sampleRate);
+        const data = buffer.getChannelData(0); for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+        const noise = audioContext.createBufferSource(), filter = audioContext.createBiquadFilter(), noiseGain = audioContext.createGain();
+        noise.buffer = buffer; filter.type = 'lowpass'; filter.frequency.value = 900; noiseGain.gain.value = .12;
+        noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(audioContext.destination); noise.start(now);
+        noise.onended = () => { noise.disconnect(); filter.disconnect(); noiseGain.disconnect(); };
+      }
+
+      function playWhoosh() {
+        if (!soundEnabled || !audioContext || audioContext.state !== 'running') return;
+        const now = audioContext.currentTime, length = .18;
+        const buffer = audioContext.createBuffer(1, Math.ceil(audioContext.sampleRate * length), audioContext.sampleRate);
+        const data = buffer.getChannelData(0); for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const source = audioContext.createBufferSource(), filter = audioContext.createBiquadFilter(), gain = audioContext.createGain(); source.buffer = buffer;
+        filter.type = 'bandpass'; filter.Q.value = .6; filter.frequency.setValueAtTime(400, now); filter.frequency.exponentialRampToValueAtTime(1200, now + length);
+        gain.gain.setValueAtTime(.001, now); gain.gain.linearRampToValueAtTime(.09, now + .08); gain.gain.exponentialRampToValueAtTime(.001, now + length);
+        source.connect(filter); filter.connect(gain); gain.connect(audioContext.destination); source.start(now);
+        source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+      }
+
+      function spawnImpact(position) {
+        const count = reducedMotion ? 28 : 90;
+        const positions = new Float32Array(count * 3), velocities = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2, force = .8 + Math.random() * 3;
+          positions.set([position.x, position.y, position.z], i * 3);
+          velocities.set([Math.cos(a) * force, .8 + Math.random() * 2.8, Math.sin(a) * force], i * 3);
+        }
+        const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const particleMaterial = new THREE.PointsMaterial({ color: 0xffd6a1, size: .045, transparent: true, opacity: .85, depthWrite: false, blending: THREE.AdditiveBlending });
+        const points = new THREE.Points(geometry, particleMaterial); points.frustumCulled = false; scene.add(points);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xe9ae69, side: THREE.DoubleSide, transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending });
+        const shockwave = new THREE.Mesh(new THREE.RingGeometry(.91, 1, 64), ringMaterial);
+        shockwave.rotation.x = -Math.PI / 2; shockwave.position.set(position.x, .145, position.z); shockwave.scale.setScalar(.08); scene.add(shockwave);
+        const impactLight = new THREE.PointLight(0xffb05c, 12, 3, 2); impactLight.position.copy(position); scene.add(impactLight);
+        effects.push({ points, velocities, ring: shockwave, light: impactLight, life: 0, duration: .62 });
+        shakeRemaining = reducedMotion ? 0 : .16; flashRemaining = reducedMotion ? 0 : .12;
+        strikes++; document.getElementById('strikeCount').textContent = String(strikes).padStart(2, '0');
+        playThud();
+      }
+
+      function playAttack() {
+        if (isAttacking || document.hidden) return;
+        initAudio(); isAttacking = true; attackTime = 0; impactFired = false;
+        trailSamples.length = 0; trail.visible = false; attackBtn.disabled = true;
+        document.body.classList.add('attacking');
+        attackBtn.setAttribute('aria-busy', 'true'); attackLabel.textContent = 'Attacking'; readiness.classList.add('busy');
+        setStatus('WINDING UP');
+      }
+
+      function updateTrail(t) {
+        if (reducedMotion) return;
+        if (t >= attackTiming.windup && t <= attackTiming.impact + .03) {
+          character.impactTip.getWorldPosition(tempA); character.trailInner.getWorldPosition(tempB);
+          trailSamples.push([tempA.clone(), tempB.clone()]); if (trailSamples.length > 20) trailSamples.shift();
+          if (trailSamples.length > 1) {
+            const vertices = [];
+            for (let i = 1; i < trailSamples.length; i++) {
+              const [a, b] = trailSamples[i - 1], [c, d] = trailSamples[i];
+              for (const v of [a, b, c, c, b, d]) vertices.push(v.x, v.y, v.z);
+            }
+            trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            trail.visible = true;
+          }
+        }
+        trailMaterial.opacity = .20 * Math.max(0, 1 - Math.max(0, t - attackTiming.impact) / .25);
+        if (t > attackTiming.impact + .25) trail.visible = false;
+      }
+
+      function updateAnimation(dt) {
+        elapsed += dt;
+        if (isAttacking) {
+          const previousTime = attackTime; attackTime = Math.min(attackTime + dt, attackTiming.duration);
+          // Sample the exact landing pose even if a slow frame crosses impact.
+          if (!impactFired && attackTime >= attackTiming.impact) {
+            applyCharacterPose(sampleAttackPose(attackTiming.impact));
+            character.impactTip.getWorldPosition(tempA); spawnImpact(tempA.clone()); impactFired = true;
+          }
+          const p = sampleAttackPose(attackTime);
+          applyCharacterPose(p);
+          // Pull back during the swing so the full axe arc fits narrow screens.
+          if (!reducedMotion) { camera.fov = baseFov + p.fov * (innerWidth <= 800 ? 2.2 : 1); camera.updateProjectionMatrix(); }
+          attackBtn.style.setProperty('--progress', attackTime / attackTiming.duration);
+          updateTrail(attackTime);
+          if (previousTime < attackTiming.drive && attackTime >= attackTiming.drive) playWhoosh();
+          if (attackTime >= attackTiming.follow) setStatus('RECOVERING');
+          else if (attackTime >= attackTiming.hold) setStatus('FOLLOW THROUGH');
+          else if (attackTime >= attackTiming.impact) setStatus('STRIKE LANDED');
+          else if (attackTime >= attackTiming.windup) setStatus('STRIKING');
+          if (attackTime >= attackTiming.duration) {
+            isAttacking = false; attackBtn.disabled = false; attackBtn.removeAttribute('aria-busy');
+            attackBtn.style.setProperty('--progress', 0); attackLabel.textContent = 'Attack!';
+            readiness.classList.remove('busy'); setStatus('READY FOR BATTLE');
+            document.body.classList.remove('attacking'); camera.fov = baseFov; camera.updateProjectionMatrix();
+            applyCharacterPose(neutralPose);
+          }
+        } else if (!reducedMotion) {
+          const breath = Math.sin(elapsed * 1.8);
+          applyCharacterPose({ ...neutralPose, hipY: breath * .005, torsoPitch: breath * .006,
+            gripY: neutralPose.gripY + breath * .009,
+            headYaw: Math.sin(elapsed * .6) * .018, headPitch: Math.sin(elapsed * 1.8 + .8) * .008,
+            leftPitch: -Math.sin(elapsed * 1.8 + .7) * .018 });
+        }
+        for (let i = effects.length - 1; i >= 0; i--) {
+          const e = effects[i]; e.life += dt;
+          const positions = e.points.geometry.attributes.position.array;
+          for (let j = 0; j < positions.length; j += 3) {
+            positions[j] += e.velocities[j] * dt; positions[j + 1] += e.velocities[j + 1] * dt; positions[j + 2] += e.velocities[j + 2] * dt;
+            e.velocities[j + 1] -= 6.5 * dt;
+          }
+          e.points.geometry.attributes.position.needsUpdate = true;
+          const life = Math.min(e.life / e.duration, 1);
+          e.points.material.opacity = .85 * Math.pow(1 - life, 1.5);
+          e.ring.scale.setScalar(.08 + easeOutCubic(life) * 1.06); e.ring.material.opacity = .5 * Math.pow(1 - life, 2);
+          e.light.intensity = 12 * Math.pow(1 - life, 4);
+          if (life >= 1) {
+            scene.remove(e.points, e.ring, e.light); e.points.geometry.dispose(); e.points.material.dispose(); e.ring.geometry.dispose(); e.ring.material.dispose(); e.light.dispose(); effects.splice(i, 1);
+          }
+        }
+        if (!reducedMotion) {
+          for (let i = 0; i < 42; i++) { const j = i * 3 + 1; emberPositions[j] += dt * (.035 + (i % 4) * .012); if (emberPositions[j] > 5) emberPositions[j] = .15; }
+          emberGeometry.attributes.position.needsUpdate = true;
+        }
+        flashRemaining = Math.max(0, flashRemaining - dt); flash.style.opacity = flashRemaining > 0 ? (flashRemaining / .12) * .10 : 0;
+      }
+
+      function resize() {
+        const width = innerWidth, height = innerHeight, mobile = width <= 800;
+        renderer.setSize(width, height); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        camera.aspect = width / height; camera.clearViewOffset();
+        if (!mobile) camera.setViewOffset(width, height, -width * .07, 0, width, height);
+        const visibleHeight = (mobile ? Math.max(5.8, 4.2 / camera.aspect) : 5.65) * (reducedMotion ? 1.55 : 1);
+        const distance = visibleHeight / (2 * Math.tan(THREE.MathUtils.degToRad(baseFov / 2)));
+        homeTarget.set(0, mobile ? 1.90 : 1.82, 0);
+        homeCamera.copy(new THREE.Vector3(3.4, 1.9, 7.9).normalize().multiplyScalar(distance).add(homeTarget));
+        camera.position.copy(homeCamera); controls.target.copy(homeTarget);
+        controls.minDistance = mobile ? distance * .67 : 5.6; controls.maxDistance = distance * 1.6;
+        camera.updateProjectionMatrix(); controls.update(); resetTween = null;
+      }
+
+      function resetView() {
+        resetTween = { time: 0, from: camera.position.clone(), target: controls.target.clone() };
+        if (reducedMotion) { camera.position.copy(homeCamera); controls.target.copy(homeTarget); controls.update(); resetTween = null; }
+      }
+
+      function setupUI() {
+        try { soundEnabled = localStorage.getItem('warforge-sound') !== 'off'; } catch { /* file:// storage may be unavailable. */ }
+        const soundBtn = document.getElementById('soundBtn');
+        const syncSound = () => {
+          soundBtn.setAttribute('aria-pressed', String(soundEnabled)); soundBtn.setAttribute('aria-label', soundEnabled ? 'Mute sound' : 'Enable sound');
+          document.getElementById('soundLabel').textContent = soundEnabled ? 'SOUND ON' : 'SOUND OFF';
+          document.getElementById('soundWaves').setAttribute('d', soundEnabled ? 'M13 7c2 1 2 5 0 6m3-9c4 3 4 9 0 12' : 'm13 7 5 6m0-6-5 6');
+        };
+        syncSound();
+        soundBtn.addEventListener('click', () => { soundEnabled = !soundEnabled; syncSound(); if (soundEnabled) initAudio(); try { localStorage.setItem('warforge-sound', soundEnabled ? 'on' : 'off'); } catch {} });
+        attackBtn.addEventListener('click', playAttack);
+        document.getElementById('resetBtn').addEventListener('click', resetView);
+        controls.addEventListener('start', () => { resetTween = null; });
+        window.addEventListener('keydown', event => {
+          if (event.altKey || event.ctrlKey || event.metaKey || event.repeat || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+          if (event.code === 'Space' && event.target.tagName !== 'BUTTON') { event.preventDefault(); playAttack(); }
+          if (event.code === 'KeyR') resetView();
+        });
+        window.addEventListener('resize', resize);
+        document.addEventListener('visibilitychange', () => { clock.getDelta(); });
+        renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); showError('The 3D view was interrupted. Reload to bring Ironfang back.'); });
+        attackBtn.disabled = false;
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), .1);
+        if (document.hidden) return;
+        updateAnimation(dt);
+        if (resetTween) {
+          resetTween.time += dt; const t = easeInOutCubic(Math.min(resetTween.time / .6, 1));
+          camera.position.lerpVectors(resetTween.from, homeCamera, t); controls.target.lerpVectors(resetTween.target, homeTarget, t);
+          if (t >= 1) resetTween = null;
+        }
+        controls.update(); cameraBeforeShake.copy(camera.position);
+        if (shakeRemaining > 0) {
+          shakeRemaining = Math.max(0, shakeRemaining - dt); const strength = .055 * shakeRemaining / .16;
+          camera.position.x += Math.sin(elapsed * 137) * strength; camera.position.y += Math.cos(elapsed * 113) * strength * .65;
+        }
+        renderer.render(scene, camera); camera.position.copy(cameraBeforeShake);
+      }
+
+      resize(); setupUI(); animate();
+      document.getElementById('loading').classList.add('hidden');
+      setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 600);
+    }
+
+    function showError(message) {
+      const loading = document.getElementById('loading'); loading.style.display = 'flex'; loading.classList.remove('hidden');
+      document.getElementById('loadingMessage').textContent = message;
+      document.getElementById('retryBtn').style.display = 'block';
+      document.getElementById('attackBtn').disabled = true;
+    }
+    boot().catch(error => {
+      console.error('Warforge initialization failed:', error);
+      showError(error.message?.includes('WebGL') ? 'This browser could not start the 3D renderer. Enable hardware acceleration, then try again.' : 'The warrior could not load. Check your internet connection to load Three.js, then try again.');
+    });
+  </script>
+</body>
+</html>

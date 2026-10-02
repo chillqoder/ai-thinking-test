@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151916">
+  <meta name="description" content="Meet Gruk Ironfang. A handcrafted, interactive 3D orc warrior with a battle axe and a little attitude.">
+  <title>The Warforge — Gruk Ironfang</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23151916'/%3E%3Cpath d='M20 6L32 20 20 34 8 20Z' fill='none' stroke='%23cb9d65' stroke-width='2'/%3E%3Cpath d='M20 12V28M14 17L20 12 26 17' fill='none' stroke='%23cb9d65' stroke-width='2'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: dark; --bg:#151916; --text:#e8e6dc; --muted:#8b9388; --gold:#c8a16e; --line:rgba(195,202,180,.13); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:Arial,Helvetica,sans-serif; }
+    button { font:inherit; }
+    button:focus-visible { outline:2px solid var(--gold); outline-offset:5px; }
+    button:disabled { cursor:wait; }
+    .app { position:relative; width:100%; height:100svh; min-height:700px; overflow:hidden; background:radial-gradient(ellipse at 64% 44%,#2c3326 0%,#1b211b 30%,#151916 64%); }
+    .app::after { content:""; pointer-events:none; position:absolute; inset:0; z-index:1; background:linear-gradient(0deg,rgba(11,14,12,.5),transparent 26%); }
+    .header { height:94px; margin:0 4.4%; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); position:relative; z-index:5; }
+    .brand { display:flex; gap:13px; align-items:center; font-size:14px; letter-spacing:3.2px; font-weight:700; }
+    .brand-mark { width:30px; height:37px; color:var(--gold); }
+    .header-end { display:flex; align-items:center; gap:37px; }
+    .edition { font-size:10px; letter-spacing:2px; color:var(--muted); }
+    .edition span { color:var(--gold); margin-left:10px; }
+    .tools { display:flex; gap:9px; }
+    .icon-button { display:grid; place-items:center; width:36px; height:36px; padding:8px; border:1px solid var(--line); border-radius:50%; background:transparent; color:#aeb4a6; cursor:pointer; transition:color .2s,border-color .2s,background .2s; }
+    .icon-button:hover,.icon-button[aria-pressed="true"] { border-color:#8d7754; color:var(--gold); background:#c8a16e0b; }
+    svg { display:block; }
+    .icon-button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+    .hero { position:absolute; left:7%; top:24%; z-index:3; width:300px; pointer-events:none; }
+    .eyebrow { display:flex; align-items:center; gap:10px; color:var(--gold); font-size:10px; letter-spacing:2.4px; font-weight:600; }
+    .eyebrow::before { content:""; width:23px; height:1px; background:var(--gold); }
+    h1 { font-family:Georgia,'Times New Roman',serif; font-size:clamp(62px,6.7vw,102px); font-weight:400; line-height:.98; letter-spacing:-4px; margin:26px 0 24px; }
+    h1 span { display:block; color:#b6bfa6; font-style:italic; font-size:.76em; letter-spacing:-3px; margin-top:8px; }
+    .lore { max-width:243px; font-size:13px; line-height:1.85; color:#919a8d; margin:0; }
+    .character-tags { display:flex; gap:9px; margin-top:25px; }
+    .tag { font-size:9px; letter-spacing:1.5px; border:1px solid var(--line); padding:7px 10px; border-radius:3px; color:#c1c5b7; }
+    .attributes { width:225px; border-top:1px solid var(--line); padding-top:26px; margin-top:38px; }
+    .attribute { margin-bottom:17px; }
+    .attribute-label { display:flex; justify-content:space-between; align-items:center; font-size:9px; letter-spacing:1.7px; color:#9da596; margin-bottom:9px; }
+    .attribute-label b { color:var(--gold); font-size:10px; font-weight:400; letter-spacing:1px; }
+    .bar { height:3px; background:#33392d; }
+    .bar span { display:block; height:100%; background:linear-gradient(90deg,#777959,#c6a778); }
+    .stage { position:absolute; top:102px; left:26%; right:7%; bottom:137px; z-index:2; touch-action:none; }
+    .stage::before { content:""; position:absolute; width:min(75%,590px); aspect-ratio:1; top:48%; left:50%; transform:translate(-50%,-50%); border:1px solid rgba(192,199,168,.045); border-radius:50%; pointer-events:none; }
+    .stage::after { content:""; position:absolute; width:min(87%,690px); aspect-ratio:1; top:48%; left:50%; transform:translate(-50%,-50%); border:1px solid rgba(192,199,168,.025); border-radius:50%; pointer-events:none; }
+    canvas { display:block; width:100%; height:100%; outline:none; }
+    .loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:17px; font-size:10px; letter-spacing:2px; color:var(--gold); text-align:center; line-height:1.8; }
+    .loading-mark { width:24px; height:24px; border:1px solid #c8a16e3b; border-top-color:var(--gold); transform:rotate(45deg); animation:load 1.8s infinite ease-in-out; }
+    .loading.error .loading-mark { display:none; }
+    .loading.error { padding:36px; letter-spacing:.5px; max-width:450px; margin:auto; }
+    @keyframes load { to { transform:rotate(405deg); } }
+    .specimen { position:absolute; z-index:3; top:23%; right:5%; writing-mode:vertical-rl; display:flex; align-items:center; gap:18px; font-size:9px; letter-spacing:3px; color:#737e70; }
+    .specimen::after { content:""; height:70px; width:1px; background:var(--line); }
+    .weapon { position:absolute; right:5.2%; top:61%; width:167px; z-index:3; pointer-events:none; }
+    .weapon-icon { color:var(--gold); width:32px; height:32px; margin-bottom:17px; opacity:.8; }
+    .weapon .small-label { font-size:8px; color:#7e8a77; letter-spacing:2px; }
+    .weapon h2 { font-family:Georgia,'Times New Roman',serif; font-weight:400; font-size:21px; margin:9px 0; }
+    .weapon p { color:#828d7c; font-size:10px; line-height:1.7; margin:0; }
+    .weapon-line { width:32px; height:1px; background:#a58a60; margin:17px 0 12px; }
+    .damage { font-size:9px; letter-spacing:1px; color:#c3b18e; }
+    .action { position:absolute; z-index:4; bottom:76px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:15px; }
+    .attack { position:relative; display:flex; justify-content:center; align-items:center; gap:14px; width:212px; height:55px; border:1px solid #b37548; border-radius:5px; color:#f1e3cb; background:linear-gradient(115deg,#79482f,#683723); box-shadow:0 4px 30px #8c4c2221,inset 0 1px 0 #d4a17722; cursor:pointer; transition:box-shadow .2s,transform .2s,background .2s; }
+    .attack:hover:not(:disabled) { background:linear-gradient(115deg,#925837,#7d442a); box-shadow:0 0 30px #bf722944,inset 0 1px 0 #d4a17733; transform:translateY(-2px); }
+    .attack:active:not(:disabled) { transform:translateY(1px) scale(.98); }
+    .attack:disabled { border-color:#795a3b; }
+    .attack svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round; }
+    .attack-label { font-size:12px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; }
+    .attack kbd { position:absolute; right:12px; font-family:inherit; font-size:8px; letter-spacing:.3px; padding:4px; border:1px solid #dcba8b30; border-radius:2px; color:#d6b78f; }
+    .attack .button-content { display:flex; align-items:center; gap:12px; margin-right:17px; }
+    .attack-hint { font-size:9px; color:#778070; letter-spacing:1px; white-space:nowrap; }
+    .footer { position:absolute; z-index:4; bottom:0; left:4.4%; right:4.4%; height:61px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+    .status { display:flex; align-items:center; gap:8px; font-size:9px; letter-spacing:1.3px; color:#a2ac98; text-transform:uppercase; min-width:160px; }
+    .status-dot { width:5px; height:5px; background:#8d9e70; border-radius:50%; box-shadow:0 0 10px #90a76b33; }
+    .app.attacking .status-dot { background:#daa968; box-shadow:0 0 12px #e09c5980; }
+    .orbit-hint { font-size:9px; color:#747e6e; letter-spacing:.4px; display:flex; align-items:center; gap:9px; }
+    .orbit-hint svg { width:13px; height:13px; fill:none; stroke:#87927c; stroke-width:1.3; }
+    .orbit-hint .dot { padding:0 4px; color:#4c5748; }
+    .counter { min-width:160px; text-align:right; color:#75806e; font-size:9px; letter-spacing:1.4px; }
+    .counter b { color:#b0ba9f; font-weight:400; margin-right:5px; font-variant-numeric:tabular-nums; }
+    .flash { position:absolute; inset:0; background:#e0b272; opacity:0; pointer-events:none; z-index:6; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (min-width:1700px) { .hero { left:10%; } .stage { left:29%; right:11%; } .weapon { right:8%; } .specimen { right:8%; } }
+    @media (max-width:1100px) { .hero { left:5%; width:230px; } h1 { font-size:72px; } .stage { left:23%; right:2%; } .weapon { right:4%; top:67%; width:132px; } .specimen { right:4%; } .weapon h2 { font-size:19px; } .weapon-icon { display:none; } .lore { max-width:210px; } }
+    @media (max-width:760px) {
+      .app { min-height:740px; background:radial-gradient(ellipse at 50% 46%,#2c3326,#151916 64%); }
+      .header { height:75px; margin:0 6%; } .brand { font-size:11px; letter-spacing:2px; gap:9px; } .brand-mark { width:23px; height:30px; }
+      .header-end { gap:0; } .edition { display:none; } .tools { gap:7px; } .icon-button { width:31px; height:31px; padding:6px; }
+      .hero { top:103px; left:7%; width:auto; } .eyebrow { font-size:8px; letter-spacing:2px; } .eyebrow::before { width:18px; }
+      h1 { font-size:49px; margin:17px 0; letter-spacing:-2px; line-height:1; } h1 span { display:inline; font-size:.85em; letter-spacing:-2px; margin:0 0 0 7px; }
+      .lore { font-size:10px; max-width:280px; line-height:1.7; } .character-tags { margin-top:13px; gap:7px; } .tag { font-size:7px; padding:5px 7px; }
+      .attributes,.weapon,.specimen { display:none; }
+      .stage { top:250px; left:0; right:0; bottom:139px; }
+      .action { bottom:90px; gap:12px; } .attack { width:201px; height:52px; } .attack-hint { font-size:8px; }
+      .footer { height:61px; margin:0; left:6%; right:6%; } .status { min-width:0; font-size:8px; letter-spacing:.7px; } .counter { font-size:8px; min-width:0; }
+      .orbit-hint { position:absolute; bottom:71px; width:100%; justify-content:center; font-size:8px; } .attack-hint { display:none; }
+    }
+    @media (max-width:370px) { .brand { font-size:9px; } h1 { font-size:43px; } .tools { gap:4px; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <main class="app" id="app">
+    <header class="header">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 40" fill="none" aria-hidden="true"><path d="M16 2 30 20 16 38 2 20Z" stroke="currentColor"/><path d="M16 10v21m-5-16 5-5 5 5M10 23l6-5 6 5" stroke="currentColor" stroke-width="1.7"/></svg>
+        THE WARFORGE
+      </div>
+      <div class="header-end">
+        <div class="edition">CHARACTER STUDY <span>001 / ORC</span></div>
+        <div class="tools" aria-label="Scene controls">
+          <button class="icon-button" id="soundBtn" aria-label="Mute sound" aria-pressed="true" title="Sound on · Click to mute"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-wave" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button>
+          <button class="icon-button" id="rotateBtn" aria-label="Enable auto-rotate" aria-pressed="false" title="Auto-rotate"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5L3 9m0-5v5h5M4 13a8 8 0 0 0 14 5l3-3m0 5v-5h-5"/></svg></button>
+          <button class="icon-button" id="resetBtn" aria-label="Reset camera" title="Reset view"><svg viewBox="0 0 24 24"><path d="M4 9V4m0 5h5M4 9a8 8 0 1 1-1 7"/><path d="M12 8v4l3 2"/></svg></button>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero" aria-label="Character profile">
+      <div class="eyebrow">THE IRON CLAN</div>
+      <h1>Gruk<span>Ironfang</span></h1>
+      <p class="lore">Some warriors tell their stories.<br>He lets his axe do the talking.</p>
+      <div class="character-tags"><span class="tag">ORC WARRIOR</span><span class="tag">LEVEL 28</span></div>
+      <div class="attributes" aria-label="Character attributes">
+        <div class="attribute"><div class="attribute-label">STRENGTH <b>94</b></div><div class="bar"><span style="width:94%"></span></div></div>
+        <div class="attribute"><div class="attribute-label">RESILIENCE <b>86</b></div><div class="bar"><span style="width:86%"></span></div></div>
+        <div class="attribute"><div class="attribute-label">AGILITY <b>62</b></div><div class="bar"><span style="width:62%"></span></div></div>
+      </div>
+    </section>
+
+    <div class="stage" id="stage" aria-label="Interactive 3D orc warrior. Drag to rotate and scroll to zoom.">
+      <div class="loading" id="loading" role="status"><span class="loading-mark"></span><span id="loadingText">ENTERING THE WARFORGE</span></div>
+    </div>
+    <div class="specimen" aria-hidden="true">FORGED IN THE ASHLANDS</div>
+    <aside class="weapon" aria-label="Weapon details">
+      <svg class="weapon-icon" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="m11 32 16-24m-9 3-9 1-4 7 10 2m7-6 3 9 8-1 3-7-9-5" stroke="currentColor" stroke-width="1.2"/><path d="m7 34 4-2 3 2" stroke="currentColor"/></svg>
+      <div class="small-label">WEAPON OF CHOICE</div>
+      <h2>The Splitter</h2>
+      <p>Forged iron. Worn leather.<br>No second chances.</p>
+      <div class="weapon-line"></div>
+      <div class="damage">DOUBLE-EDGED IRON</div>
+    </aside>
+
+    <div class="action">
+      <button class="attack" id="attackBtn" disabled aria-label="Attack with battle axe (Space)"><span class="button-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 21 13-18m-7 3L5 7l-3 5 7 2m6-4 2 6 5-1 1-5-5-3"/></svg><span class="attack-label">Attack!</span></span><kbd aria-hidden="true">SPACE</kbd></button>
+      <span class="attack-hint">A little fury goes a long way.</span>
+    </div>
+    <footer class="footer">
+      <div class="status" role="status"><span class="status-dot"></span><span id="statusText">Summoning warrior</span></div>
+      <div class="orbit-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="1.5" width="8" height="12" rx="4"/><path d="M8 2v4"/></svg><span>Drag to rotate</span><span class="dot">·</span><span>Scroll to zoom</span></div>
+      <div class="counter"><b id="strikeCount">00</b> STRIKES LANDED</div>
+    </footer>
+    <div class="flash" id="flash" aria-hidden="true"></div>
+    <span class="sr-only" id="announcement" aria-live="polite"></span>
+  </main>
+
+  <script type="module">
+    // Dynamic module imports keep a useful error message visible if the CDN cannot load.
+    let THREE, OrbitControls;
+    try {
+      THREE = await import('three');
+      ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+      init();
+    } catch (error) {
+      console.error('The Warforge could not start:', error);
+      document.getElementById('loading').classList.add('error');
+      document.getElementById('loadingText').textContent = 'The forge could not open. Check your internet connection and WebGL support, then reload.';
+      document.getElementById('statusText').textContent = 'Scene unavailable';
+    }
+
+    function init() {
+      const stage = document.getElementById('stage');
+      const app = document.getElementById('app');
+      const attackBtn = document.getElementById('attackBtn');
+      const statusText = document.getElementById('statusText');
+      const flash = document.getElementById('flash');
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x171c17, .036);
+      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.28;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      stage.appendChild(renderer.domElement);
+      const camera = new THREE.PerspectiveCamera(42, 1, .1, 60);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = .07;
+      controls.enablePan = false;
+      controls.minDistance = 5.2;
+      controls.maxDistance = 11;
+      controls.minPolarAngle = .38;
+      controls.maxPolarAngle = Math.PI / 2.04;
+      controls.autoRotateSpeed = .65;
+      let homePosition = new THREE.Vector3();
+      const homeTarget = new THREE.Vector3();
+      let currentMobile = null;
+      let isAttacking = false, attackTime = 0, impactHold = 0, hasImpacted = false, strikeCount = 0;
+      let soundEnabled = true, audioContext = null, shakeTime = 0, elapsed = 0;
+      const clock = new THREE.Clock();
+      const effects = [];
+
+      // A restrained palette, lit by warm forge light and a cool edge light.
+      const material = (color, roughness=.85, metalness=0) => new THREE.MeshStandardMaterial({ color, roughness, metalness, flatShading:true });
+      const M = {
+        skin:material('#557447'), skinLight:material('#627f50'), skinDark:material('#3f5a34'),
+        leather:material('#433329'), leatherLight:material('#6b5140'), leatherDark:material('#2c2923'),
+        iron:material('#707e74',.48,.50), ironLight:material('#b0b9ab',.3,.66), ironDark:material('#2d3632',.6,.55),
+        brass:material('#b3965d',.43,.7), bone:material('#d9cfac',.58), hair:material('#222b22'),
+        eye:material('#e0d4ab',.4), pupil:material('#191e12',.5), mouth:material('#273022'), paint:material('#a58e60'),
+        stone:material('#292e27',.95), stoneEdge:material('#20251f',.9),
+        rune:new THREE.MeshStandardMaterial({ color:'#caa566', emissive:'#b57a34', emissiveIntensity:.3, roughness:.5, metalness:.5, flatShading:true })
+      };
+      const mesh = (parent, geometry, mat, position=[0,0,0], scale=null) => {
+        const object = new THREE.Mesh(geometry, mat);
+        object.position.set(...position);
+        if (scale) object.scale.set(...scale);
+        object.castShadow = true;
+        object.receiveShadow = true;
+        parent.add(object);
+        return object;
+      };
+      const box = (p, dimensions, m, pos, rot=0) => {
+        const o = mesh(p,new THREE.BoxGeometry(...dimensions),m,pos); o.rotation.z=rot; return o;
+      };
+      const sphere = (p,m,pos,scale) => mesh(p,new THREE.SphereGeometry(1,12,8),m,pos,scale);
+      const cylinder = (p,top,bottom,height,m,pos,segments=10) => mesh(p,new THREE.CylinderGeometry(top,bottom,height,segments),m,pos);
+      const cone = (p,radius,height,m,pos,rotation=[0,0,0]) => {
+        const o=mesh(p,new THREE.ConeGeometry(radius,height,7),m,pos); o.rotation.set(...rotation); return o;
+      };
+      const group = (p,name,pos=[0,0,0]) => {
+        const g=new THREE.Group(); g.name=name; g.position.set(...pos); p.add(g); return g;
+      };
+      function plate(parent, points, depth, mat, position=[0,0,0], bevel=.015) {
+        const shape = new THREE.Shape();
+        points.forEach(([x,y],i) => i ? shape.lineTo(x,y) : shape.moveTo(x,y));
+        shape.closePath();
+        const geometry = new THREE.ExtrudeGeometry(shape,{ depth, bevelEnabled:bevel>0, bevelThickness:bevel, bevelSize:bevel, bevelSegments:1, steps:1 });
+        geometry.translate(0,0,-depth/2);
+        return mesh(parent,geometry,mat,position);
+      }
+      function ring(parent,radius,tube,mat,pos) {
+        const o=mesh(parent,new THREE.TorusGeometry(radius,tube,5,32),mat,pos); o.rotation.x=Math.PI/2; return o;
+      }
+
+      function setupLights() {
+        scene.add(new THREE.HemisphereLight(0xc6d0b1,0x3c3428,2));
+        const key = new THREE.DirectionalLight(0xffdfad,3.3);
+        key.position.set(-3.5,7,5); key.castShadow=true;
+        key.shadow.mapSize.set(2048,2048);
+        key.shadow.camera.left=-4; key.shadow.camera.right=4;
+        key.shadow.camera.top=5; key.shadow.camera.bottom=-3;
+        key.shadow.camera.near=.1; key.shadow.camera.far=18;
+        key.shadow.normalBias=.025; key.shadow.bias=-.0003;
+        key.shadow.radius=3;
+        scene.add(key);
+        const rim = new THREE.DirectionalLight(0xbdc6a2,2.9);
+        rim.position.set(2.5,4,-3); scene.add(rim);
+        const fill = new THREE.DirectionalLight(0xd8e0cf,1.05);
+        fill.position.set(4,3,5); scene.add(fill);
+        const forge = new THREE.PointLight(0xf2aa58,7,8,2);
+        forge.position.set(-2.4,1.8,-1.2); scene.add(forge);
+      }
+
+      function createGround() {
+        const groundMat=material('#191e18'); groundMat.transparent=true; groundMat.opacity=.12; groundMat.depthWrite=false;
+        const ground = mesh(scene,new THREE.CircleGeometry(2.7,64),groundMat,[0,-.082,0]);
+        ground.rotation.x=-Math.PI/2; ground.castShadow=false;
+        const shadow=mesh(scene,new THREE.PlaneGeometry(20,20),new THREE.ShadowMaterial({color:0x060905,opacity:.22}),[0,-.08,0]);
+        shadow.rotation.x=-Math.PI/2; shadow.castShadow=false;
+        cylinder(scene,1.72,1.78,.10,M.stoneEdge,[0,-.022,0],64);
+        cylinder(scene,1.60,1.68,.17,M.stone,[0,.075,0],64);
+        ring(scene,1.57,.014,material('#716747',.75,.35),[0,.167,0]);
+        ring(scene,1.30,.006,material('#4c513a'),[0,.167,0]);
+        for(let i=0;i<32;i++) {
+          const angle=i/32*Math.PI*2;
+          const mark=box(scene,[i%4===0?.032:.018,.007,i%4===0?.11:.055],M.brass,[Math.sin(angle)*1.46,.166,Math.cos(angle)*1.46]);
+          mark.rotation.y=angle;
+        }
+        // Broken stone chips at the edge of the arena.
+        for(let i=0;i<9;i++) {
+          const a=i*2.4, r=1.95+(i%3)*.17;
+          const chip=mesh(scene,new THREE.DodecahedronGeometry(.075+(i%2)*.025),M.stoneEdge,[Math.sin(a)*r,-.04,Math.cos(a)*r],[1,.6,1.4]);
+          chip.rotation.set(i,.4*i,.2*i);
+        }
+      }
+
+      function createAxe(hand) {
+        const axe=group(hand,'battleAxe');
+        cylinder(axe,.047,.06,1.80,M.leatherLight,[0,.35,0],10);
+        cylinder(axe,.063,.063,.45,M.leatherDark,[0,-.08,0]);
+        for(let i=0;i<8;i++) ring(axe,.065,.012,M.leatherLight,[0,-.29+i*.06,0]);
+        cylinder(axe,.075,.07,.11,M.brass,[0,-.59,0]);
+        sphere(axe,M.ironDark,[0,-.67,0],[.075,.075,.075]);
+        box(axe,[.21,.45,.20],M.ironDark,[0,1.10,0]);
+        for(const side of [-1,1]) {
+          const shape=new THREE.Shape();
+          shape.moveTo(.075,.16); shape.lineTo(.29,.24); shape.lineTo(.63,.50);
+          shape.quadraticCurveTo(.86,0,.63,-.50);
+          shape.lineTo(.29,-.23); shape.lineTo(.075,-.16); shape.closePath();
+          const geo=new THREE.ExtrudeGeometry(shape,{depth:.11,bevelEnabled:true,bevelSegments:1,steps:1,bevelSize:.025,bevelThickness:.02,curveSegments:12});
+          geo.translate(0,0,-.055);
+          const blade=mesh(axe,geo,M.iron,[0,1.1,0]); blade.scale.x=side;
+          const edge=new THREE.Shape();
+          edge.moveTo(.63,.5); edge.quadraticCurveTo(.86,0,.63,-.5);
+          edge.lineTo(.55,-.36); edge.quadraticCurveTo(.73,0,.55,.36); edge.closePath();
+          const edgeGeo=new THREE.ExtrudeGeometry(edge,{depth:.125,bevelEnabled:false,curveSegments:12}); edgeGeo.translate(0,0,-.0625);
+          const sharpened=mesh(axe,edgeGeo,M.ironLight,[0,1.1,0]); sharpened.scale.x=side;
+          sharpened.name=side<0?'leadingBladeEdge':'backBladeEdge';
+          plate(axe,[[0,.13],[.085,0],[0,-.13],[-.085,0]],.014,M.brass,[side*.32,1.1,.09],.005);
+          plate(axe,[[0,.073],[.045,0],[0,-.073],[-.045,0]],.012,M.ironDark,[side*.32,1.1,.104],.003);
+          for(const z of [-.12,.12]) sphere(axe,M.brass,[side*.06,1.23,z],[.023,.023,.016]);
+        }
+        cylinder(axe,.07,.08,.15,M.brass,[0,1.41,0]);
+        cone(axe,.085,.23,M.ironLight,[0,1.59,0]);
+        box(axe,[.043,.25,.016],M.rune,[0,1.10,.114]);
+        // The middle of the sharpened crescent, rather than the flat face or top spike.
+        const bladeContact=group(axe,'bladeContact',[-.745,1.10,0]);
+        return {axe,bladeContact};
+      }
+
+      function createOrc() {
+        const orc=group(scene,'orc',[0,.12,0]);
+        const hips=group(orc,'hips',[0,1.035,0]);
+        const torso=group(hips,'torso');
+        sphere(torso,M.skin,[0,.66,0],[.68,.67,.37]);
+        sphere(torso,M.skinDark,[0,.17,0],[.47,.37,.32]);
+        for(const side of [-1,1]) {
+          sphere(torso,M.skinLight,[side*.285,.79,.26],[.335,.235,.17]);
+          sphere(torso,M.skin,[side*.16,.44,.29],[.18,.16,.095]);
+        }
+        // The diagonal strap continues around the back, with visible brass rivets.
+        for(const z of [-.35,.408]) box(torso,[1.14,.145,.065],M.leather,[.02,.67,z],-.67);
+        for(let i=0;i<6;i++) sphere(torso,M.brass,[-.39+i*.15,.995-i*.119,.452],[.024,.024,.018]);
+        box(torso,[.21,.19,.04],M.brass,[.20,.52,.466],-.67);
+        box(torso,[.13,.10,.045],M.leatherDark,[.20,.52,.493],-.67);
+        const belt=cylinder(torso,.48,.49,.17,M.leatherDark,[0,.08,0],12); belt.scale.z=.75;
+        for(let i=0;i<10;i++) {
+          const a=i/10*Math.PI*2;
+          box(torso,[.10,.13,.04],M.iron,[Math.sin(a)*.49,.08,Math.cos(a)*.375]).rotation.y=a;
+        }
+        box(torso,[.22,.21,.08],M.brass,[0,.08,.403]);
+        box(torso,[.145,.135,.035],M.ironDark,[0,.08,.46]);
+        plate(torso,[[0,.05],[.045,-.035],[-.045,-.035]],.02,M.bone,[0,.08,.488],0);
+        const cloth=group(torso,'loincloth');
+        for(const side of [-1,1]) {
+          const flap=plate(cloth,[[-.145,.06],[.145,.06],[.115,-.40],[0,-.50],[-.12,-.40]],.055,M.leather,[side*.18,-.045,.27]);
+          flap.rotation.y=side*.15;
+          for(let i=0;i<3;i++) box(flap,[.11,.027,.012],M.leatherLight,[0,-.13-i*.095,.045],side*.05);
+        }
+        const rearFlap=plate(cloth,[[-.35,0],[.35,0],[.25,-.4],[-.22,-.4]],.07,M.leather, [0,-.05,-.29]);
+        rearFlap.rotation.x=-.15;
+
+        const head=group(torso,'head',[0,1.55,.025]);
+        cylinder(torso,.24,.28,.27,M.skinDark,[0,1.14,0]);
+        sphere(head,M.skin,[0,0,0],[.39,.45,.34]);
+        sphere(head,M.skinLight,[0,-.255,.10],[.36,.23,.30]);
+        box(head,[.45,.045,.06],M.mouth,[0,-.18,.365]);
+        sphere(head,M.skinDark,[0,-.255,.37],[.27,.07,.035]);
+        sphere(head,M.skinLight,[0,.005,.327],[.13,.13,.115]);
+        for(const side of [-1,1]) {
+          sphere(head,M.skinDark,[side*.18,.09,.292],[.13,.10,.09]);
+          sphere(head,M.eye,[side*.175,.102,.36],[.082,.050,.032]);
+          sphere(head,M.pupil,[side*.163,.1,.392],[.026,.036,.011]);
+          sphere(head,M.bone,[side*.153,.115,.401],[.008,.01,.004]);
+          box(head,[.255,.096,.12],M.skinDark,[side*.165,.169,.34],side*.17);
+          cone(head,.066,.27,M.bone,[side*.23,-.125,.403],[0,0,side*-.14]);
+          const ear=plate(head,[[0,-.12],[.11,-.10],[.37,.17],[.10,.08],[0,.09]],.10,M.skin,[side*.32,.015,-.015]);
+          ear.scale.x=side;
+          const inset=plate(head,[[.07,-.06],[.29,.12],[.11,.045]],.017,M.skinDark,[side*.32,.015,.05],.008);
+          inset.scale.x=side;
+        }
+        const earring=mesh(head,new THREE.TorusGeometry(.074,.015,6,16),M.brass,[.49,-.066,.015]);
+        earring.rotation.y=.3;
+        for(let i=0;i<3;i++) box(head,[.025,.17,.014],M.paint,[.245+i*.038,-.048-i*.008,.294-i*.023],-.19);
+        sphere(head,M.hair,[0,.32,-.07],[.29,.15,.28]);
+        const knot=group(head,'topknot',[0,.43,-.08]);
+        cylinder(knot,.07,.12,.15,M.hair,[0,.035,0]);
+        ring(knot,.094,.021,M.brass,[0,.067,0]);
+        sphere(knot,M.hair,[0,.15,-.025],[.145,.13,.125]);
+        cone(head,.12,.21,M.hair,[0,-.43,.14],[0,0,Math.PI]);
+
+        function createArm(side) {
+          const name=side<0?'right':'left';
+          const arm=group(torso,name+'ArmGroup',[side*.67,1.005,side<0?.14:0]);
+          // Y/Z establish a diagonal swing plane; shoulder and elbow then bend in it.
+          arm.rotation.order='YZX';
+          arm.rotation.set(side<0?-.12:-.08,side<0?-.52:0,side<0?-.21:.21,'YZX');
+          sphere(arm,M.skin,[side*.015,-.055,0],[.255,.29,.265]);
+          const upper=mesh(arm,new THREE.CapsuleGeometry(.185,.22,3,10),M.skin, [0,-.27,0]);
+          sphere(arm,M.skinLight,[0,-.22,.07],[.205,.27,.19]);
+          const forearm=group(arm,name+'ForearmGroup',[0,-.52,0]);
+          forearm.rotation.x=side<0?-.99:-.17;
+          sphere(forearm,M.skinDark,[0,.015,0],[.18,.17,.18]);
+          const fore=mesh(forearm,new THREE.CapsuleGeometry(.175,.18,3,10),M.skin,[0,-.22,0]);
+          const bracer=cylinder(forearm,.217,.176,.29,M.leather,[0,-.265,0]);
+          ring(forearm,.211,.024,M.iron,[0,-.135,0]);
+          ring(forearm,.177,.024,M.iron,[0,-.405,0]);
+          plate(forearm,[[-.105,.11],[.105,.11],[.09,-.12],[-.075,-.13]],.055,M.iron,[0,-.26,.182]);
+          for(const x of [-.065,.065]) sphere(forearm,M.brass,[x,-.20,.219],[.022,.022,.017]);
+          const hand=group(forearm,name+'HandGroup',[0,-.51,0]);
+          let grip=null;
+          if(side<0) {
+            // A neutral wrist puts the haft across the palm, perpendicular to the forearm.
+            // Fingers, thumb and axe share this frame, so the axe cannot spin inside the fist.
+            hand.rotation.x=Math.PI/2;
+            grip=group(hand,'rightGrip',[0,0,.14]);
+            box(grip,[.235,.31,.105],M.skinLight,[0,0,-.105]);
+            for(let i=0;i<4;i++) {
+              const y=.114-i*.076;
+              const points=[[-.09,y,-.085],[-.14,y,-.015],[-.105,y,.077],[-.025,y,.105],[.065,y,.076],[.085,y,.012]];
+              const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+              mesh(grip,new THREE.TubeGeometry(curve,12,.039,6,false),M.skin);
+              sphere(grip,M.skinLight,[-.125,y,.022],[.043,.037,.041]);
+            }
+            const thumb=new THREE.CatmullRomCurve3([[.095,.16,-.065],[.137,.10,.035],[.10,.052,.105],[.033,.045,.108]].map(p=>new THREE.Vector3(...p)));
+            mesh(grip,new THREE.TubeGeometry(thumb,12,.047,7,false),M.skinLight);
+          } else {
+            sphere(hand,M.skinLight,[0,0,0],[.21,.205,.195]);
+            for(let i=0;i<3;i++) box(hand,[.10,.08,.09],M.skin,[.015,-.095+i*.084,.163],-.05);
+            sphere(hand,M.skin,[side*-.15,.03,.10],[.095,.13,.095]);
+          }
+          if(side>0) {
+            const pauldron=sphere(arm,M.ironDark,[.025,.03,0],[.38,.21,.33]);
+            sphere(arm,M.iron,[.025,.10,.015],[.335,.12,.28]);
+            for(let i=0;i<3;i++) cone(arm,.074,.30+i*.035,M.bone,[-.17+i*.19,.23,.01],[0,0,(1-i)*.38]);
+            for(const x of [-.17,.17]) sphere(arm,M.brass,[x,.04,.28],[.028,.028,.026]);
+            box(arm,[.41,.14,.055],M.iron,[.04,-.08,.28],-.12);
+          } else {
+            ring(arm,.24,.032,M.leather,[0,-.13,0]);
+            for(let i=0;i<3;i++) box(arm,[.055,.155,.018],M.paint,[-.09+i*.07,-.26,.207],-.18);
+          }
+          return {arm,forearm,hand,grip};
+        }
+        const right=createArm(-1), left=createArm(1);
+        const {axe,bladeContact}=createAxe(right.grip);
+        // The blade lies in the shoulder/elbow swing plane. Its sharpened -X edge leads.
+        axe.rotation.y=Math.PI/2;
+
+        const legs=[];
+        for(const side of [-1,1]) {
+          const name=side<0?'right':'left';
+          const leg=group(hips,name+'LegGroup',[side*.31,0,0]);
+          cylinder(leg,.245,.20,.48,M.leatherDark,[0,-.225,0]);
+          const knee=group(leg,name+'Knee',[0,-.47,0]);
+          sphere(knee,M.iron,[0,0,.095],[.205,.18,.135]);
+          sphere(knee,M.brass,[0,.0,.212],[.035,.035,.013]);
+          cylinder(knee,.175,.18,.36,M.leather,[0,-.23,0]);
+          plate(knee,[[-.125,.015],[.13,.015],[.10,-.34],[-.09,-.34]],.075,M.iron,[0,-.05,.144]);
+          for(const y of [-.13,-.34]) ring(knee,.18,.024,M.leatherDark,[0,y,0]);
+          const ankle=group(knee,name+'Ankle',[0,-.43,0]);
+          box(ankle,[.39,.27,.53],M.leatherDark,[0,-.005,.08]);
+          box(ankle,[.40,.06,.55],M.ironDark,[0,-.14,.09]);
+          box(ankle,[.34,.09,.29],M.iron,[0,.085,.18]);
+          legs.push({hip:leg,knee,ankle,side,thighLength:.47,shinLength:.43});
+        }
+        // Keep the original local pose for every animated pivot.
+        const pivots=[orc,hips,torso,head,cloth,knot,right.arm,right.forearm,right.hand,left.arm,left.forearm,left.hand,axe,...legs.flatMap(leg=>[leg.hip,leg.knee,leg.ankle])];
+        for(const pivot of pivots) {
+          pivot.userData.restRotation=pivot.rotation.clone();
+          pivot.userData.restPosition=pivot.position.clone();
+        }
+        return {orc,hips,torso,head,cloth,knot,right,left,axe,bladeContact,legs};
+      }
+
+      function createAtmosphere() {
+        const positions=new Float32Array(45*3);
+        for(let i=0;i<45;i++) {
+          positions[i*3]=(Math.random()-.5)*6;
+          positions[i*3+1]=Math.random()*4;
+          positions[i*3+2]=(Math.random()-.5)*4-1;
+        }
+        const geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+        const dust=new THREE.Points(geo,new THREE.PointsMaterial({color:0xc4af78,size:.012,transparent:true,opacity:.35,depthWrite:false}));
+        scene.add(dust);
+        return dust;
+      }
+
+      setupLights();
+      createGround();
+      const rig=createOrc();
+      const dust=createAtmosphere();
+      const rest = (object,axis) => object.userData.restRotation[axis];
+
+      const easeInOutCubic = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+      const easeOutCubic = t => 1-Math.pow(1-t,3);
+
+      // Joint angles and planted-foot targets: load, coil, drive, contact, follow-through, recover.
+      // Shoulder and elbow bend in one plane. Only the wrist moves the entire closed grip.
+      const readyPose = {
+        armX:-.12, elbowX:-.99, wristX:0,
+        hipX:0,hipY:0,hipZ:0,hipYaw:0,hipRoll:0,
+        torsoX:0,torsoY:0,torsoZ:0,headX:0,headY:0,
+        leftX:-.08,leftZ:.21,leftElbow:-.17,leftWrist:0,
+        stepZ:-.04,stepLift:0,stepPitch:0,stepYaw:-.12,
+        backZ:.10,backPitch:0,backYaw:.10,clothX:0,hairX:0
+      };
+      const keyframe = (t,phase,values={}) => ({t,phase,pose:{...readyPose,...values}});
+      const swing = [
+        keyframe(0,'load'),
+        keyframe(.18,'coil',{
+          armX:-.65,elbowX:-1.10,wristX:-.08,
+          hipX:-.035,hipY:-.06,hipZ:-.08,hipYaw:-.10,
+          torsoX:-.04,torsoY:-.16,torsoZ:-.04,headY:.15,
+          leftX:-.28,leftZ:.33,leftElbow:-.50,backPitch:.04,clothX:.04,hairX:-.05
+        }),
+        keyframe(.42,'drive',{
+          armX:-2.65,elbowX:-.95,wristX:.10,
+          hipX:-.065,hipY:-.09,hipZ:-.13,hipYaw:-.22,hipRoll:-.035,
+          torsoX:-.10,torsoY:-.25,torsoZ:-.055,headX:.06,headY:.32,
+          leftX:-.45,leftZ:.42,leftElbow:-.65,leftWrist:-.10,
+          stepZ:-.08,stepLift:.02,stepPitch:.03,backPitch:.06,clothX:.12,hairX:-.06
+        }),
+        keyframe(.52,'strike',{
+          armX:-2.35,elbowX:-1.0,wristX:.07,
+          hipX:-.10,hipY:-.10,hipZ:.075,hipYaw:.16,hipRoll:-.035,
+          torsoX:.06,torsoY:.16,torsoZ:.025,headX:-.05,headY:-.15,
+          leftX:.05,leftZ:.38,leftElbow:-.70,
+          stepZ:.22,stepLift:.10,backPitch:.13,clothX:.08,hairX:.04
+        }),
+        keyframe(.66,'contact',{
+          armX:-.75,elbowX:-.20,wristX:.025,
+          hipX:-.11,hipY:-.11,hipZ:.18,hipYaw:.16,hipRoll:-.035,
+          torsoX:.20,torsoY:.16,torsoZ:.025,headX:-.14,headY:-.23,
+          leftX:.48,leftZ:.32,leftElbow:-.80,leftWrist:.06,
+          stepZ:.42,stepYaw:.03,backPitch:.19,clothX:-.10,hairX:.09
+        }),
+        keyframe(.80,'follow-through',{
+          armX:-.38,elbowX:-.18,wristX:.07,
+          hipX:-.13,hipY:-.135,hipZ:.22,hipYaw:.20,hipRoll:-.035,
+          torsoX:.24,torsoY:.23,torsoZ:.045,headX:-.14,headY:-.32,
+          leftX:.62,leftZ:.30,leftElbow:-.90,leftWrist:.10,
+          stepZ:.42,stepYaw:.03,backPitch:.22,clothX:-.17,hairX:.13
+        }),
+        keyframe(1.08,'recover',{
+          armX:-.65,elbowX:-.70,wristX:-.04,
+          hipX:-.06,hipY:-.07,hipZ:.08,hipYaw:.06,
+          torsoX:.08,torsoY:.06,headX:-.04,headY:-.04,
+          leftX:.08,leftElbow:-.35,stepZ:.17,stepLift:.09,stepPitch:-.03,
+          backPitch:.06,clothX:.06,hairX:-.05
+        }),
+        keyframe(1.42,'ready')
+      ];
+      const impactFrame=swing.find(frame=>frame.phase==='contact');
+      const attackDuration=swing[swing.length-1].t;
+      const segmentEasing=[easeInOutCubic,easeOutCubic,easeInOutCubic,t=>t*t,easeOutCubic,easeInOutCubic,easeInOutCubic];
+
+      function sampleAttackPose(time) {
+        let index=0;
+        while(index<swing.length-2 && time>swing[index+1].t) index++;
+        const a=swing[index], b=swing[index+1];
+        const t=segmentEasing[index](THREE.MathUtils.clamp((time-a.t)/(b.t-a.t),0,1));
+        const pose={};
+        for(const key of Object.keys(readyPose)) pose[key]=THREE.MathUtils.lerp(a.pose[key],b.pose[key],t);
+        return {pose,phase:a.phase};
+      }
+
+      // Two-bone leg IK lets the pelvis turn and drop while each supporting sole stays planted.
+      const down=new THREE.Vector3(0,-1,0);
+      const ik={origin:new THREE.Vector3(),target:new THREE.Vector3(),pole:new THREE.Vector3(),direction:new THREE.Vector3(),bend:new THREE.Vector3(),knee:new THREE.Vector3(),bone:new THREE.Vector3(),parent:new THREE.Quaternion(),rotation:new THREE.Quaternion(),footEuler:new THREE.Euler(0,0,0,'YXZ')};
+      function solveLeg(leg,{z,lift=0,pitch=0,yaw=0}) {
+        // Raising the ankle by the boot's rotated bottom extent keeps heel/toe rolls grounded.
+        const soleHeight=.04+.17*Math.cos(pitch)+Math.max(.365*Math.sin(pitch),-.185*Math.sin(pitch));
+        ik.target.set(leg.side*.40,soleHeight+lift,z);
+        rig.orc.localToWorld(ik.target);
+        ik.pole.set(leg.side*.40,.55,z+.8);
+        rig.orc.localToWorld(ik.pole);
+        leg.hip.getWorldPosition(ik.origin);
+        ik.direction.subVectors(ik.target,ik.origin);
+        const distance=THREE.MathUtils.clamp(ik.direction.length(),.01,leg.thighLength+leg.shinLength-.0001);
+        ik.direction.normalize();
+        ik.target.copy(ik.origin).addScaledVector(ik.direction,distance);
+        ik.bend.subVectors(ik.pole,ik.origin);
+        ik.bend.addScaledVector(ik.direction,-ik.bend.dot(ik.direction)).normalize();
+        const along=(leg.thighLength**2-leg.shinLength**2+distance**2)/(2*distance);
+        const height=Math.sqrt(Math.max(0,leg.thighLength**2-along**2));
+        ik.knee.copy(ik.origin).addScaledVector(ik.direction,along).addScaledVector(ik.bend,height);
+        ik.bone.subVectors(ik.knee,ik.origin).normalize();
+        ik.rotation.setFromUnitVectors(down,ik.bone);
+        leg.hip.parent.getWorldQuaternion(ik.parent).invert();
+        leg.hip.quaternion.copy(ik.parent.multiply(ik.rotation));
+        leg.hip.updateWorldMatrix(true,true);
+        ik.bone.subVectors(ik.target,ik.knee).normalize();
+        ik.rotation.setFromUnitVectors(down,ik.bone);
+        leg.hip.getWorldQuaternion(ik.parent).invert();
+        leg.knee.quaternion.copy(ik.parent.multiply(ik.rotation));
+        leg.knee.updateWorldMatrix(true,true);
+        ik.rotation.setFromEuler(ik.footEuler.set(pitch,yaw,0,'YXZ'));
+        leg.knee.getWorldQuaternion(ik.parent).invert();
+        leg.ankle.quaternion.copy(ik.parent.multiply(ik.rotation));
+      }
+
+      function applyPose(p) {
+        const hipRest=rig.hips.userData.restPosition;
+        rig.hips.position.set(hipRest.x+p.hipX,hipRest.y+p.hipY,hipRest.z+p.hipZ);
+        rig.hips.rotation.set(0,p.hipYaw,p.hipRoll);
+        rig.torso.scale.y=1;
+        rig.torso.rotation.x=rest(rig.torso,'x')+p.torsoX;
+        rig.torso.rotation.y=rest(rig.torso,'y')+p.torsoY;
+        rig.torso.rotation.z=rest(rig.torso,'z')+p.torsoZ;
+        rig.head.rotation.x=rest(rig.head,'x')+p.headX;
+        rig.head.rotation.y=rest(rig.head,'y')+p.headY;
+        rig.right.arm.rotation.x=p.armX;
+        rig.right.forearm.rotation.x=p.elbowX;
+        rig.right.hand.rotation.x=rest(rig.right.hand,'x')+p.wristX;
+        rig.left.arm.rotation.x=p.leftX;
+        rig.left.arm.rotation.z=p.leftZ;
+        rig.left.forearm.rotation.x=p.leftElbow;
+        rig.left.hand.rotation.z=rest(rig.left.hand,'z')+p.leftWrist;
+        rig.cloth.rotation.x=rest(rig.cloth,'x')+p.clothX;
+        rig.knot.rotation.x=rest(rig.knot,'x')+p.hairX;
+        rig.hips.updateWorldMatrix(true,true);
+        solveLeg(rig.legs[0],{z:p.stepZ,lift:p.stepLift,pitch:p.stepPitch,yaw:p.stepYaw});
+        solveLeg(rig.legs[1],{z:p.backZ,pitch:p.backPitch,yaw:p.backYaw});
+      }
+
+      function ensureAudio() {
+        if(!soundEnabled) return;
+        try {
+          audioContext ??= new (window.AudioContext || window.webkitAudioContext)();
+          if(audioContext.state==='suspended') audioContext.resume().catch(()=>{});
+        } catch (_) { /* Visual interaction still works on devices without Web Audio. */ }
+      }
+      function playSound(impact=false) {
+        if(!soundEnabled || !audioContext || audioContext.state!=='running') return;
+        const now=audioContext.currentTime;
+        const duration=impact?.28:.22;
+        const oscillator=audioContext.createOscillator();
+        const gain=audioContext.createGain();
+        oscillator.type=impact?'triangle':'sine';
+        oscillator.frequency.setValueAtTime(impact?125:220,now);
+        oscillator.frequency.exponentialRampToValueAtTime(impact?32:65,now+duration);
+        gain.gain.setValueAtTime(.001,now);
+        gain.gain.exponentialRampToValueAtTime(impact?.34:.055,now+.015);
+        gain.gain.exponentialRampToValueAtTime(.001,now+duration);
+        oscillator.connect(gain); gain.connect(audioContext.destination);
+        oscillator.start(now); oscillator.stop(now+duration+.02);
+        const noiseLength=Math.floor(audioContext.sampleRate*duration);
+        const buffer=audioContext.createBuffer(1,noiseLength,audioContext.sampleRate);
+        const data=buffer.getChannelData(0);
+        for(let i=0;i<noiseLength;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/noiseLength,2);
+        const source=audioContext.createBufferSource(); source.buffer=buffer;
+        const filter=audioContext.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=impact?800:1500;
+        const noiseGain=audioContext.createGain(); noiseGain.gain.value=impact?.24:.06;
+        source.connect(filter); filter.connect(noiseGain); noiseGain.connect(audioContext.destination);
+        source.start(now);
+        source.onended=()=>{ source.disconnect(); filter.disconnect(); noiseGain.disconnect(); };
+        oscillator.onended=()=>{ oscillator.disconnect(); gain.disconnect(); };
+      }
+
+      function spawnImpact() {
+        scene.updateMatrixWorld(true);
+        const origin=rig.bladeContact.getWorldPosition(new THREE.Vector3());
+        const count=52, positions=new Float32Array(count*3), velocities=[];
+        for(let i=0;i<count;i++) {
+          positions.set([origin.x,origin.y,origin.z],i*3);
+          velocities.push(new THREE.Vector3((Math.random()-.5)*4,Math.random()*2+.25,(Math.random()-.5)*4));
+        }
+        const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+        const mat=new THREE.PointsMaterial({color:0xedbd76,size:.047,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending});
+        const particles=new THREE.Points(geo,mat); particles.frustumCulled=false; scene.add(particles);
+        const shock=mesh(scene,new THREE.RingGeometry(.08,.105,48),new THREE.MeshBasicMaterial({color:0xcfaa67,transparent:true,opacity:.6,side:THREE.DoubleSide,depthWrite:false}),origin.toArray());
+        shock.quaternion.copy(rig.axe.getWorldQuaternion(new THREE.Quaternion()));
+        shock.castShadow=false; shock.receiveShadow=false;
+        effects.push({particles,shock,velocities,age:0});
+        shakeTime=reducedMotion?0:.17;
+        if(!reducedMotion) flash.style.opacity='.07';
+        strikeCount++;
+        document.getElementById('strikeCount').textContent=String(strikeCount).padStart(2,'0');
+        document.getElementById('announcement').textContent=`Axe strike landed. ${strikeCount} ${strikeCount===1?'strike':'strikes'}.`;
+        playSound(true);
+      }
+
+      function playAttack() {
+        if(isAttacking) return;
+        ensureAudio();
+        isAttacking=true; attackTime=0; impactHold=0; hasImpacted=false;
+        attackBtn.disabled=true; app.classList.add('attacking');
+        statusText.textContent='Winding up';
+        playSound();
+      }
+
+      function updateAnimation(dt) {
+        elapsed+=dt;
+        if(isAttacking) {
+          const held=Math.min(impactHold,dt);
+          impactHold-=held;
+          attackTime+=dt-held;
+          const impactNow=attackTime>=impactFrame.t && !hasImpacted;
+          if(impactNow) attackTime=impactFrame.t;
+          const {pose,phase}=sampleAttackPose(attackTime);
+          applyPose(pose);
+          statusText.textContent=({load:'Winding up',coil:'Winding up',drive:'Driving forward',strike:'Unleashing fury',contact:'Following through','follow-through':'Recovering',recover:'Recovering'})[phase];
+          if(impactNow) {
+            // A short whole-body hit stop makes the edge contact readable and gives the blow weight.
+            spawnImpact(); hasImpacted=true; impactHold=.055;
+          }
+          if(hasImpacted && attackTime<=swing[5].t) statusText.textContent='Following through';
+          if(attackTime>=attackDuration) {
+            applyPose(readyPose); isAttacking=false; attackBtn.disabled=false;
+            app.classList.remove('attacking'); statusText.textContent='Battle ready';
+          }
+        } else {
+          const breath=Math.sin(elapsed*1.85)*(reducedMotion?.001:.009);
+          applyPose({...readyPose,
+            hipY:breath*.4,torsoX:breath*.35,headY:Math.sin(elapsed*.55)*.025,
+            armX:readyPose.armX+Math.sin(elapsed*1.6)*.018,
+            leftX:readyPose.leftX+Math.sin(elapsed*1.6+.9)*.023
+          });
+          rig.torso.scale.y=1+breath;
+        }
+        dust.rotation.y=elapsed*.018;
+        dust.position.y=Math.sin(elapsed*.2)*.08;
+        for(let i=effects.length-1;i>=0;i--) {
+          const effect=effects[i]; effect.age+=dt;
+          const positions=effect.particles.geometry.attributes.position;
+          for(let n=0;n<effect.velocities.length;n++) {
+            const v=effect.velocities[n]; v.y-=dt*3.8;
+            positions.array[n*3]+=v.x*dt;
+            positions.array[n*3+1]+=v.y*dt;
+            positions.array[n*3+2]+=v.z*dt;
+          }
+          positions.needsUpdate=true;
+          effect.particles.material.opacity=Math.max(0,1-effect.age/.55);
+          effect.shock.scale.setScalar(1+effect.age*9);
+          effect.shock.material.opacity=Math.max(0,.55*(1-effect.age/.5));
+          if(effect.age>.6) {
+            for(const object of [effect.particles,effect.shock]) { scene.remove(object); object.geometry.dispose(); object.material.dispose(); }
+            effects.splice(i,1);
+          }
+        }
+        const opacity=Number(flash.style.opacity)||0;
+        if(opacity>0) flash.style.opacity=String(Math.max(0,opacity-dt*.7));
+      }
+
+      function resetCamera() {
+        controls.autoRotate=false;
+        const rotateBtn=document.getElementById('rotateBtn');
+        rotateBtn.setAttribute('aria-pressed','false'); rotateBtn.setAttribute('aria-label','Enable auto-rotate');
+        const damping=controls.enableDamping;
+        controls.enableDamping=false; controls.update();
+        camera.position.copy(homePosition); controls.target.copy(homeTarget);
+        controls.update(); controls.enableDamping=damping; controls.saveState();
+      }
+
+      function resize() {
+        const {width,height}=stage.getBoundingClientRect();
+        if(!width || !height) return;
+        renderer.setSize(width,height);
+        camera.aspect=width/height;
+        const mobile=window.innerWidth<=760;
+        const oldHomeDistance=homePosition.distanceTo(homeTarget);
+        camera.fov=mobile?45:42;
+        camera.updateProjectionMatrix();
+        homeTarget.set(mobile?-.50:-.18,mobile?1.66:1.75,0);
+        homePosition.set(mobile?3.5:3.0,mobile?3.3:3.2,mobile?7.2:6.1);
+        // Frame the complete diagonal cleave, including its overhead wind-up, at narrow ratios.
+        const framingScale=Math.max(1,(mobile?.86:1.32)/camera.aspect);
+        homePosition.sub(homeTarget).multiplyScalar(framingScale).add(homeTarget);
+        controls.maxDistance=Math.max(11,homePosition.distanceTo(homeTarget)*1.4);
+        if(mobile!==currentMobile) {
+          currentMobile=mobile;
+          resetCamera();
+        } else if(oldHomeDistance>0) {
+          const offset=camera.position.clone().sub(controls.target);
+          offset.multiplyScalar(homePosition.distanceTo(homeTarget)/oldHomeDistance);
+          camera.position.copy(controls.target).add(offset); controls.update();
+        }
+      }
+
+      function setupUI() {
+        attackBtn.addEventListener('click',playAttack);
+        window.addEventListener('keydown',event=>{
+          if(event.code==='Space' && !event.repeat && !['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) && !event.target.isContentEditable) {
+            // Other controls retain their normal keyboard activation behavior.
+            if(event.target.tagName==='BUTTON' && event.target!==attackBtn) return;
+            event.preventDefault(); playAttack();
+          }
+        });
+        document.getElementById('resetBtn').addEventListener('click',resetCamera);
+        document.getElementById('rotateBtn').addEventListener('click',event=>{
+          controls.autoRotate=!controls.autoRotate;
+          event.currentTarget.setAttribute('aria-pressed',String(controls.autoRotate));
+          event.currentTarget.setAttribute('aria-label',controls.autoRotate?'Disable auto-rotate':'Enable auto-rotate');
+        });
+        document.getElementById('soundBtn').addEventListener('click',event=>{
+          soundEnabled=!soundEnabled;
+          event.currentTarget.setAttribute('aria-pressed',String(soundEnabled));
+          event.currentTarget.setAttribute('aria-label',soundEnabled?'Mute sound':'Enable sound');
+          event.currentTarget.title=soundEnabled?'Sound on · Click to mute':'Sound off · Click to enable';
+          event.currentTarget.querySelector('.sound-wave').style.opacity=soundEnabled?'1':'.2';
+          if(soundEnabled) ensureAudio();
+        });
+        window.addEventListener('resize',resize);
+        renderer.domElement.addEventListener('webglcontextlost',event=>{
+          event.preventDefault(); attackBtn.disabled=true;
+          statusText.textContent='Graphics interrupted — reload to resume';
+        });
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        // Limit a resumed frame so joints and impact effects do not jump after backgrounding.
+        const dt=clock.getDelta();
+        updateAnimation(Math.min(dt,.1));
+        const autoRotate=controls.autoRotate;
+        if(isAttacking) controls.autoRotate=false;
+        controls.update(); controls.autoRotate=autoRotate;
+        if(shakeTime>0) {
+          const saved=camera.position.clone();
+          const amount=.038*(shakeTime/.17);
+          camera.position.x+=(Math.random()-.5)*amount;
+          camera.position.y+=(Math.random()-.5)*amount;
+          shakeTime=Math.max(0,shakeTime-dt);
+          renderer.render(scene,camera);
+          camera.position.copy(saved);
+        } else renderer.render(scene,camera);
+      }
+
+      resize(); setupUI(); animate();
+      document.getElementById('loading').hidden=true;
+      document.getElementById('loading').style.display='none';
+      attackBtn.disabled=false;
+      statusText.textContent='Battle ready';
+    }
+  </script>
+</body>
+</html>

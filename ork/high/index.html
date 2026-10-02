@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101713">
+  <title>Ironwood — Orc Warrior</title>
+  <style>
+    :root{color-scheme:dark;--paper:#edece3;--muted:#889488;--line:rgba(174,194,158,.17);--green:#b6ce87}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:Arial,Helvetica,sans-serif;background:#101713;color:var(--paper)}
+    button{font:inherit}button:focus-visible{outline:2px solid var(--green);outline-offset:5px}
+    #viewport{position:absolute;inset:0;background:radial-gradient(ellipse at 58% 45%,#29382a 0%,#151e18 47%,#0d1310 100%)}canvas{display:block;width:100%;height:100%;touch-action:none}
+    .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px #070b0966}
+    .interface{position:absolute;inset:0;pointer-events:none;padding:30px 48px;display:flex;flex-direction:column}
+    header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:23px}
+    .brand{display:flex;align-items:center;gap:13px;font-size:17px;letter-spacing:4px;font-weight:700}.brand svg{width:29px;height:29px;color:var(--green)}.brand span{font-weight:400;color:#99a494;letter-spacing:2px;font-size:11px;border-left:1px solid var(--line);padding-left:17px;margin-left:5px}
+    .edition{font:10px monospace;letter-spacing:2px;color:var(--muted);display:flex;gap:25px;align-items:center}.edition strong{font-weight:400;color:var(--green)}
+    .intro{position:absolute;top:145px;left:49px;max-width:350px}.eyebrow{font:10px monospace;letter-spacing:2.2px;color:var(--green);display:flex;align-items:center;gap:10px}.eyebrow:before{content:"";width:24px;height:1px;background:var(--green)}
+    h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(45px,4.9vw,72px);font-weight:400;line-height:1.02;letter-spacing:-3px;margin:22px 0 20px}h1 em{font-style:italic;color:var(--green)}
+    .description{font-size:13px;line-height:1.8;color:#9aa597;max-width:260px}.tags{display:flex;gap:8px;margin-top:24px}.tag{border:1px solid var(--line);font:9px monospace;letter-spacing:1px;padding:7px 10px;color:#a9b4a0;border-radius:3px}
+    .specimen{position:absolute;right:49px;top:146px;font:10px monospace;color:var(--muted);letter-spacing:2px;writing-mode:vertical-rl;display:flex;align-items:center;gap:17px}.specimen:after{content:"";height:75px;width:1px;background:var(--line)}
+    .weapon{position:absolute;left:49px;bottom:148px;width:242px}.small-label{font:9px monospace;letter-spacing:2px;color:var(--muted)}.weapon-name{display:flex;align-items:center;gap:14px;margin:15px 0 20px}.weapon-name svg{width:34px;height:43px;color:#adbca0}.weapon-name h2{font:22px Georgia,serif;margin:0 0 5px}.weapon-name p{font:10px monospace;color:var(--muted);margin:0}
+    .stat{display:flex;align-items:center;gap:16px;margin:11px 0;font:9px monospace;letter-spacing:1px}.stat>span{width:57px;color:var(--muted)}.bar{height:3px;flex:1;background:#ffffff12}.bar i{display:block;height:100%;background:#9caf7b}.stat b{font-weight:400;color:#a9b4a0}
+    .action{position:absolute;bottom:121px;left:56%;transform:translateX(-50%);text-align:center;pointer-events:auto}.action-status{font:9px monospace;letter-spacing:1.9px;color:#a3b39a;margin-bottom:15px;display:flex;align-items:center;justify-content:center;gap:8px}.dot{width:5px;height:5px;border-radius:50%;background:#b5ca87;box-shadow:0 0 9px #b5ca8755}
+    #attackBtn{height:57px;min-width:224px;background:linear-gradient(135deg,#993e31,#6c2925);color:#fff0df;border:1px solid #c576555c;border-radius:7px;box-shadow:0 5px 25px #0005,inset 0 1px 0 #ffffff15;display:flex;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:transform .18s,box-shadow .18s,filter .18s;font-size:14px;font-weight:600;letter-spacing:.5px}
+    #attackBtn svg{width:20px;height:20px}#attackBtn:hover{box-shadow:0 0 30px #a43d343d,inset 0 1px 0 #ffffff15;filter:brightness(1.16);transform:translateY(-2px)}#attackBtn:active{transform:translateY(1px)}#attackBtn:disabled{cursor:default;filter:saturate(.65);transform:none}.keyboard{margin-top:12px;font-size:10px;color:#788672}.keyboard kbd{font:9px monospace;border:1px solid #88947744;border-radius:3px;padding:2px 5px;margin:0 4px;color:#a4b398}
+    .tools{position:absolute;bottom:152px;right:48px;display:flex;gap:8px;pointer-events:auto}.tool{display:grid;place-items:center;width:39px;height:39px;border:1px solid var(--line);background:#18221bc0;border-radius:5px;color:#9ead94;cursor:pointer;transition:background .2s,color .2s}.tool svg{width:16px;height:16px}.tool:hover,.tool[aria-pressed="true"]{background:#283628;color:var(--green)}
+    footer{margin-top:auto;padding-top:22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font:10px monospace;letter-spacing:.3px;color:#7f8d7b}.orbit-hint{display:flex;align-items:center;gap:10px}.orbit-hint svg{width:15px;height:15px;color:#a6b497}.footer-title{color:#b2bdab}.footer-right{display:flex;gap:22px}.footer-right span:before{content:"";display:inline-block;width:4px;height:4px;background:#a5bb7e;border-radius:50%;margin:0 7px 2px 0}
+    #loading{position:absolute;left:56%;top:48%;transform:translate(-50%,-50%);font:11px monospace;color:var(--green);letter-spacing:2px;pointer-events:none;text-align:center;line-height:1.9}#loading.hidden{display:none}#flash{position:absolute;inset:0;background:#f9c788;opacity:0;pointer-events:none;transition:opacity .2s}
+    @media(min-width:1600px){.intro{top:170px}.weapon{bottom:175px}.action{bottom:143px}.tools{bottom:175px}}
+    @media(max-width:1000px){.interface{padding:25px 28px}.intro{left:29px;top:125px;max-width:270px}h1{font-size:53px}.description{max-width:210px}.weapon{left:29px;width:192px;bottom:139px}.specimen{right:29px;top:125px}.tools{right:28px}.brand span{display:none}.footer-right{gap:12px}.edition{gap:15px}}
+    @media(max-width:650px){.interface{padding:20px}.brand{font-size:14px;letter-spacing:3px}.brand svg{width:24px;height:24px}header{padding-bottom:16px}.edition{font-size:8px;letter-spacing:1px}.edition>span{display:none}.intro{top:96px;left:22px;max-width:100%}.eyebrow{font-size:8px}h1{font-size:39px;letter-spacing:-1.7px;margin:13px 0 9px}h1 br{display:none}h1 em{display:block}.description,.tags,.weapon,.specimen,.footer-title,.footer-right{display:none}.action{left:50%;bottom:88px}.tools{right:20px;bottom:190px;flex-direction:column}.tool{width:34px;height:34px}footer{justify-content:center;padding-top:17px;font-size:9px}.action-status{margin-bottom:10px}#attackBtn{height:51px;min-width:201px}.keyboard{margin-top:9px}#loading{left:50%}}
+    @media(max-height:650px) and (min-width:651px){.intro{top:109px}h1{font-size:44px;margin:15px 0}.description{font-size:11px}.tags{margin-top:14px}.weapon{bottom:110px}.weapon .stat{display:none}.action{bottom:95px}.tools{bottom:112px}.keyboard{display:none}}
+    @media(prefers-reduced-motion:reduce){button{transition:none!important}}
+  </style>
+  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+  <main id="viewport" aria-label="Interactive 3D orc warrior. Drag to rotate, scroll to zoom."></main>
+  <div class="vignette"></div>
+  <div class="interface">
+    <header>
+      <div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2 29 9v14L16 30 3 23V9Z" stroke="currentColor"/><path d="m9 11 7 4 7-4M9 11v10l7 4 7-4V11M16 15v10M16 7v8" stroke="currentColor" stroke-width="1.5"/></svg>IRONWOOD<span>CHARACTER LAB</span></div>
+      <div class="edition"><span>THE WARRIOR COLLECTION</span><strong>NO. 001 / ORC</strong></div>
+    </header>
+    <section class="intro"><div class="eyebrow">BORN IN THE WILDS</div><h1>Strength.<br><em>Unrestrained.</em></h1><p class="description">An Ironwood berserker. Forged by the forest, feared on the battlefield.</p><div class="tags"><span class="tag">ORC WARRIOR</span><span class="tag">EARTH CLAN</span></div></section>
+    <div class="specimen">360° CHARACTER STUDY</div>
+    <section class="weapon" aria-label="Weapon details"><div class="small-label">WEAPON OF CHOICE</div><div class="weapon-name"><svg viewBox="0 0 40 50" fill="none" aria-hidden="true"><path d="M20 4v42M17 38h6M17 42h6M16 6C9 6 8 4 5 3L2 20c7 1 10-5 14-7M24 6c7 0 8-2 11-3l3 17c-7 1-10-5-14-7M16 6h8v8h-8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><div><h2>Bonebreaker</h2><p>DOUBLE-EDGED BATTLE AXE</p></div></div><div class="stat"><span>POWER</span><div class="bar"><i style="width:92%"></i></div><b>92</b></div><div class="stat"><span>SPEED</span><div class="bar"><i style="width:64%"></i></div><b>64</b></div></section>
+    <div class="action"><div class="action-status" role="status" aria-live="polite"><span class="dot"></span><span id="status">READY FOR BATTLE</span></div><button id="attackBtn"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 3 14 14M3 5l2-2 3 1 11 11-4 4L4 8 3 5Zm11 15 6-6M17 17l4 4M19 22l3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Attack!</span></button><div class="keyboard">or press <kbd>SPACE</kbd> to strike</div></div>
+    <div class="tools"><button class="tool" id="soundBtn" aria-label="Enable sound" aria-pressed="false" title="Enable sound"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4ZM16 9l5 6m0-6-5 6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button><button class="tool" id="rotateBtn" aria-label="Enable auto rotation" aria-pressed="false" title="Auto rotate"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 8a8 8 0 1 0 1 8M19 3v5h-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="tool" id="resetBtn" aria-label="Reset camera view" title="Reset view"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M8 8h8v8H8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button></div>
+    <footer><div class="orbit-hint"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 7V4a3 3 0 0 1 6 0v3M5 7h10v6a5 5 0 0 1-10 0V7ZM10 7v4" stroke="currentColor"/></svg>Drag to rotate <span style="color:#4f5c4c">/</span> Scroll to zoom</div><span class="footer-title">Orc Warrior — Click to Attack</span><div class="footer-right"><span>LIVE 3D</span>BUILT FROM PRIMITIVES</div></footer>
+  </div>
+  <div id="loading" role="status">SUMMONING YOUR WARRIOR…</div><div id="flash"></div>
+  <script type="module">
+    // Load modules dynamically so connection and WebGL errors remain visible.
+    try {
+      const THREE = await import('three');
+      const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+      const viewport = document.getElementById('viewport');
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x142019, .035);
+      const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, .1, 70);
+      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+      viewport.appendChild(renderer.domElement);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; controls.dampingFactor = .065;
+      controls.enablePan = false; controls.minDistance = 5.6; controls.maxDistance = 12;
+      controls.minPolarAngle = .35; controls.maxPolarAngle = Math.PI / 2.05;
+      controls.autoRotateSpeed = .65;
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const clock = new THREE.Clock();
+      let time = 0, attackTime = 0, isAttacking = false, didImpact = false, soundOn = false, audioContext;
+      let shakeTime = 0;
+      const shakeOffset = new THREE.Vector3();
+      const effects = [];
+      const mat = (color, metalness=0, roughness=.85, extra={}) => new THREE.MeshStandardMaterial({color,metalness,roughness,flatShading:true,...extra});
+      const materials = {skin:mat(0x668747),skinDark:mat(0x4a7139),skinLight:mat(0x78964e),leather:mat(0x33271e),strap:mat(0x5d4230),iron:mat(0x414f4a,.65,.38),edge:mat(0xa5b0a7,.76,.27),gold:mat(0xa98a51,.7,.38),bone:mat(0xe2d8b2),hair:mat(0x212720),eye:mat(0xf1dba0),black:mat(0x10160f),cloth:mat(0x6e3029)};
+      function mesh(parent, geometry, material, x=0,y=0,z=0, scale=null) {
+        const m = new THREE.Mesh(geometry, material);m.position.set(x,y,z);
+        if(scale)m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+      }
+      const sphere=(p,m,x,y,z,s)=>mesh(p,new THREE.SphereGeometry(1,10,7),m,x,y,z,s);
+      const box=(p,m,x,y,z,s)=>mesh(p,new THREE.BoxGeometry(...s),m,x,y,z);
+      const cylinder=(p,m,x,y,z,rt,rb,h,n=10)=>mesh(p,new THREE.CylinderGeometry(rt,rb,h,n),m,x,y,z);
+      function group(parent,x=0,y=0,z=0,name=''){const g=new THREE.Group();g.position.set(x,y,z);g.name=name;parent.add(g);return g;}
+      function spike(parent,x,y,z,r,h,rz=0,rx=0){const s=mesh(parent,new THREE.ConeGeometry(r,h,6),materials.bone,x,y,z);s.rotation.set(rx,0,rz);return s;}
+      function rivet(parent,x,y,z){sphere(parent,materials.gold,x,y,z,[.044,.044,.027]);}
+
+      function setupLights(){
+        scene.add(new THREE.HemisphereLight(0xcbd8b1,0x283226,2.1));
+        const key=new THREE.DirectionalLight(0xffe0b1,4.2);key.position.set(-3,7,5);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+        Object.assign(key.shadow.camera,{left:-5,right:5,top:6,bottom:-4,near:.1,far:20});key.shadow.normalBias=.025;key.shadow.bias=-.0003;scene.add(key);
+        const rim=new THREE.DirectionalLight(0xafcc9c,3.3);rim.position.set(3,4,-4);scene.add(rim);
+        const fill=new THREE.DirectionalLight(0x93bcb8,1.25);fill.position.set(4,2,4);scene.add(fill);
+        const amber=new THREE.PointLight(0xff9a4b,9,9,2);amber.position.set(-3,2,-1.5);scene.add(amber);
+      }
+
+      function createArena(){
+        const arena=group(scene,0,-.03,0,'arena');
+        cylinder(arena,mat(0x252e27,.25,.86),0,-.18,0,2.2,2.32,.33,64);
+        cylinder(arena,mat(0x373e31),0,-.005,0,2.16,2.19,.12,64);
+        const rim=mesh(arena,new THREE.TorusGeometry(2.19,.024,6,80),materials.gold,0,-.09,0);rim.rotation.x=Math.PI/2;
+        const ring=mesh(arena,new THREE.RingGeometry(1.82,1.84,80),mat(0x8b9765,.2,.8),0,.059,0);ring.rotation.x=-Math.PI/2;
+        // Thin inset slabs and radial runes add detail without textures.
+        for(let i=0;i<16;i++){const a=i/16*Math.PI*2;const rune=box(arena,materials.gold,Math.sin(a)*2,.064,Math.cos(a)*2,[.025,.008,.10]);rune.rotation.y=a;}
+        const random=seededRandom(42);
+        for(let i=0;i<26;i++){const a=random()*Math.PI*2,r=1.25+random()*.65;const rock=mesh(arena,new THREE.DodecahedronGeometry(.10+random()*.16,0),mat(i%3?0x4d5641:0x6b7054),Math.sin(a)*r,.10,Math.cos(a)*r);rock.scale.set(1,.4+random()*.35,1);rock.rotation.set(random(),random(),random());}
+        for(let i=0;i<13;i++){const a=random()*Math.PI*2,r=1.7+random()*.25;const tuft=group(arena,Math.sin(a)*r,.065,Math.cos(a)*r);for(let j=0;j<3;j++){const blade=mesh(tuft,new THREE.ConeGeometry(.024,.16+random()*.12,3),mat(0x697749),j*.035,.08,0);blade.rotation.z=(j-1)*.3;}}
+        const floor=mesh(scene,new THREE.CircleGeometry(30,80),mat(0x070d09),0,-.39,0);floor.rotation.x=-Math.PI/2;floor.castShadow=false;
+      }
+      function seededRandom(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};}
+
+      function createAxe(hand){
+        // The shaft passes through the closed fingers, across the palm rather
+        // than along the forearm. Its blade plane is perpendicular to the fist.
+        const axe=group(hand,0,-.015,.105,'battleAxe');
+        axe.rotation.set(Math.PI/2,-Math.PI/2,0);
+        cylinder(axe,materials.strap,0,.36,0,.065,.073,1.86);
+        cylinder(axe,materials.gold,0,-.58,0,.09,.06,.16);
+        for(let i=0;i<9;i++){const wrap=mesh(axe,new THREE.TorusGeometry(.074,.014,5,10),materials.leather,0,-.25+i*.065,0);wrap.rotation.x=Math.PI/2;}
+        box(axe,materials.iron,0,1.10,0,[.24,.37,.24]);
+        for(const side of [-1,1]){
+          const blade=new THREE.Shape();blade.moveTo(.10,.14);blade.lineTo(.34,.18);blade.quadraticCurveTo(.56,.25,.61,.43);blade.quadraticCurveTo(.91,.04,.72,-.41);blade.quadraticCurveTo(.5,-.32,.35,-.13);blade.lineTo(.1,-.12);blade.closePath();
+          const geo=new THREE.ExtrudeGeometry(blade,{depth:.085,bevelEnabled:true,bevelThickness:.028,bevelSize:.035,bevelSegments:1,steps:1,curveSegments:7});
+          const b=mesh(axe,geo,materials.edge,0,1.10,-.043);b.scale.x=side;
+          const inset=new THREE.Shape();inset.moveTo(.15,.10);inset.lineTo(.38,.13);inset.lineTo(.59,.25);inset.quadraticCurveTo(.75,.03,.63,-.25);inset.lineTo(.34,-.07);inset.lineTo(.15,-.08);inset.closePath();
+          for(const faceSide of [-1,1]){
+            const face=mesh(axe,new THREE.ExtrudeGeometry(inset,{depth:.008,bevelEnabled:false,curveSegments:6}),materials.iron,0,1.10,faceSide>0?.082:-.090);face.scale.x=side;
+            rivet(axe,side*.30,1.11,faceSide*.095);rivet(axe,side*.53,1.12,faceSide*.095);
+          }
+        }
+        cylinder(axe,materials.gold,0,1.34,0,.093,.10,.08);
+        for(const faceSide of [-1,1]){const rune=box(axe,mat(0xc7eaa5,.3,.35,{emissive:0x85b750,emissiveIntensity:.5}),0,1.1,faceSide*.133,[.062,.14,.008]);rune.rotation.z=Math.PI/4;}
+        // Actual outer cutting edge, in the mid-plane of the metal blade.
+        axe.userData.edge=group(axe,.80,1.10,0,'cuttingEdge');
+        return axe;
+      }
+
+      function createOrc(){
+        const orc=group(scene,0,.035,0,'orc');
+        const hips=group(orc,0,1.08,0,'hips');
+        sphere(hips,materials.leather,0,0,0,[.6,.3,.37]);
+        const legs=[];
+        for(const side of [-1,1]){
+          const leg=group(hips,side*.37,-.04,0,side<0?'rightLegGroup':'leftLegGroup');legs.push(leg);leg.rotation.z=side*-.08;
+          cylinder(leg,materials.skinDark,0,-.23,0,.23,.22,.47);
+          const knee=group(leg,0,-.43,0,'knee');leg.userData.knee=knee;sphere(knee,materials.skin,0,0,.04,[.235,.20,.24]);
+          cylinder(knee,materials.leather,0,-.20,0,.20,.18,.41);
+          box(knee,materials.iron,0,-.06,.20,[.30,.32,.10]);rivet(knee,0,.035,.255);
+          const ankle=group(knee,0,-.44,0,'ankle');leg.userData.ankle=ankle;
+          box(ankle,materials.leather,0,0,.10,[.45,.29,.64]);
+          box(ankle,materials.iron,0,.02,.32,[.46,.19,.24]);
+          cylinder(knee,materials.strap,0,-.26,0,.215,.215,.075);
+        }
+        cylinder(hips,materials.leather,0,.12,0,.61,.59,.20,12);
+        box(hips,materials.gold,0,.12,.385,[.25,.22,.08]);box(hips,materials.iron,0,.12,.435,[.135,.12,.025]);
+        for(const x of [-.43,-.27,.27,.43])rivet(hips,x,.12,.35);
+        const cloth=new THREE.Shape();cloth.moveTo(-.31,.0);cloth.lineTo(.31,0);cloth.lineTo(.25,-.52);cloth.lineTo(0,-.70);cloth.lineTo(-.25,-.52);cloth.closePath();
+        mesh(hips,new THREE.ExtrudeGeometry(cloth,{depth:.06,bevelEnabled:false}),materials.cloth,0,.025,.32);
+        box(hips,materials.gold,0,-.30,.389,[.024,.40,.013]);
+        // The torso now inherits the pelvis, so a weight shift moves the whole rig.
+        const torso=group(hips,0,.42,0,'torso');
+        cylinder(torso,materials.skin,0,.51,0,.72,.46,1.13,10).scale.z=.64;
+        sphere(torso,materials.skinLight,-.32,.72,.26,[.40,.33,.27]);sphere(torso,materials.skinLight,.32,.72,.26,[.40,.33,.27]);
+        sphere(torso,materials.skin,0,.19,.19,[.45,.34,.27]);
+        const strap=box(torso,materials.strap,0,.58,.465,[.17,1.2,.09]);strap.rotation.z=-.63;
+        for(let i=0;i<5;i++)rivet(torso,-.25+i*.13,.95-i*.18,.522);
+        box(torso,materials.gold,-.19,.85,.52,[.20,.18,.025]).rotation.z=-.63;
+        cylinder(torso,materials.skinDark,0,1.15,0,.27,.34,.29);
+        const head=group(torso,0,1.52,.04,'head');
+        sphere(head,materials.skin,0,.12,0,[.47,.53,.38]);
+        sphere(head,materials.skinLight,0,-.12,.20,[.43,.29,.33]);
+        box(head,materials.skinDark,0,-.02,.46,[.49,.055,.035]);
+        sphere(head,materials.skinDark,0,.15,.38,[.13,.145,.145]);
+        for(const side of [-1,1]){
+          sphere(head,materials.skinLight,side*.32,.06,.23,[.19,.18,.17]);
+          const ear=mesh(head,new THREE.ConeGeometry(.19,.59,4),materials.skinDark,side*.52,.21,-.015);ear.rotation.z=-side*1.17;ear.scale.z=.6;
+          const inner=mesh(head,new THREE.ConeGeometry(.115,.38,3),materials.skin,side*.56,.23,.07);inner.rotation.z=-side*1.17;inner.scale.z=.25;
+          sphere(head,materials.black,side*.19,.22,.336,[.151,.105,.085]);
+          sphere(head,materials.eye,side*.19,.214,.391,[.11,.056,.043]);sphere(head,materials.black,side*.18,.21,.428,[.027,.044,.015]);
+          const brow=box(head,materials.skinDark,side*.19,.306,.376,[.31,.11,.12]);brow.rotation.z=side*.17;
+          // Curved tusks are made from tapered segments with upward tips.
+          const tusk=group(head,side*.27,-.17,.44);tusk.rotation.z=-side*.18;
+          cylinder(tusk,materials.bone,0,.08,0,.055,.073,.19,7);spike(tusk,0,.245,-.015,.058,.20,side*.14,-.2);
+        }
+        const noseRing=mesh(head,new THREE.TorusGeometry(.088,.022,6,16),materials.gold,0,.025,.492);
+        for(let i=0;i<4;i++){const hair=sphere(head,materials.hair,0,.45+i*.045,-.03-i*.07,[.18,.12,.13]);}
+        sphere(head,materials.hair,0,.71,-.13,[.17,.21,.15]);cylinder(head,materials.gold,0,.57,-.13,.14,.14,.065);
+        box(head,materials.cloth,-.34,.18,.347,[.033,.20,.014]).rotation.z=-.15;
+        box(head,materials.cloth,-.28,.16,.383,[.027,.16,.014]).rotation.z=-.15;
+        const arms=[];
+        for(const side of [-1,1]){
+          const arm=group(torso,side*.76,1.01,0,side<0?'rightArmGroup':'leftArmGroup');arms.push(arm);
+          sphere(arm,materials.skin,side*.08,-.10,0,[.36,.34,.35]);
+          cylinder(arm,materials.skin,0,-.36,0,.29,.25,.53);sphere(arm,materials.skinLight,0,-.30,.13,[.255,.29,.20]);
+          const elbow=group(arm,0,-.66,0,side<0?'rightForearmGroup':'leftForearmGroup');arm.userData.elbow=elbow;
+          sphere(elbow,materials.skinDark,0,0,0,[.24,.22,.23]);cylinder(elbow,materials.skin,0,-.22,0,.24,.19,.43);
+          cylinder(elbow,materials.leather,0,-.32,0,.249,.22,.30);cylinder(elbow,materials.gold,0,-.17,0,.255,.255,.048);cylinder(elbow,materials.gold,0,-.46,0,.226,.226,.045);
+          box(elbow,materials.iron,0,-.31,.21,[.27,.25,.08]);rivet(elbow,0,-.24,.259);
+          const hand=group(elbow,0,-.63,0,side<0?'rightHandGroup':'leftHandGroup');arm.userData.hand=hand;
+          if(side<0){
+            // Four curled fingers surround the shaft; the opposing thumb locks
+            // over them. Keep the shaft visible above and below the fist.
+            sphere(hand,materials.skinLight,0,.045,-.005,[.19,.19,.145]);
+            for(let j=0;j<4;j++){
+              const fingerZ=-.065+j*.105;
+              sphere(hand,materials.skin,-.135,-.015,fingerZ,[.072,.105,.047]);
+              sphere(hand,materials.skinLight,-.09,-.112,fingerZ,[.085,.052,.047]);
+              sphere(hand,materials.skin,-.005,-.116,fingerZ,[.055,.047,.042]);
+            }
+            sphere(hand,materials.skinLight,.127,-.018,.18,[.078,.115,.085]).rotation.z=-.45;
+            sphere(hand,materials.skinLight,.073,-.096,.22,[.092,.053,.060]);
+          }else{
+            sphere(hand,materials.skinLight,0,0,.045,[.235,.235,.215]);sphere(hand,materials.skinDark,-side*.17,.025,.13,[.1,.14,.11]);
+            for(let j=0;j<3;j++)box(hand,materials.skin,-.115+j*.10,-.02,.22,[.079,.14,.065]);
+          }
+          if(side===1){
+            sphere(arm,materials.iron,.05,.03,0,[.46,.31,.44]);
+            const rim=mesh(arm,new THREE.TorusGeometry(.355,.032,5,12),materials.gold,.05,.015,.08);rim.rotation.x=Math.PI/2;
+            spike(arm,.08,.42,0,.10,.43);spike(arm,.35,.29,.03,.085,.34,-.55);spike(arm,-.16,.29,.04,.085,.34,.45);spike(arm,.10,.26,.29,.075,.29,0,.55);
+          }else{cylinder(arm,materials.strap,0,-.13,0,.35,.34,.11);createAxe(hand);}
+        }
+        const [rightArmGroup,leftArmGroup]=arms;
+        rightArmGroup.rotation.set(-.15,0,-.19);leftArmGroup.rotation.set(-.07,0,.18);rightArmGroup.userData.elbow.rotation.x=-.12;
+        // Rest transforms are the baseline for idle and all attack keyframes.
+        const animated=[orc,hips,torso,head,...arms,...arms.map(a=>a.userData.elbow),...arms.map(a=>a.userData.hand),...legs,...legs.map(l=>l.userData.knee),...legs.map(l=>l.userData.ankle)];
+        animated.forEach(g=>g.userData.rest={rotation:g.rotation.clone(),position:g.position.clone(),scale:g.scale.clone()});
+        orc.updateMatrixWorld(true);
+        legs.forEach(l=>{l.userData.footAnchor=l.userData.ankle.getWorldPosition(new THREE.Vector3());l.userData.footAnchor.y=.17;});
+        return {orc,hips,torso,head,legs,animated,rightArmGroup,leftArmGroup,elbow:rightArmGroup.userData.elbow,hand:rightArmGroup.userData.hand,axe:rightArmGroup.userData.hand.getObjectByName('battleAxe')};
+      }
+
+      // Two-bone IK gives elbows and knees real joint pivots. Foot targets stay
+      // on the arena while the pelvis turns, dips, and transfers weight.
+      const down=new THREE.Vector3(0,-1,0);
+      function solveLimb(root,hinge,end,upperLength,lowerLength,target,pole){
+        root.updateWorldMatrix(true,false);
+        const origin=root.getWorldPosition(new THREE.Vector3());
+        const direction=target.clone().sub(origin);
+        const distance=THREE.MathUtils.clamp(direction.length(),.025,upperLength+lowerLength-.001);
+        direction.normalize();
+        const bend=pole.clone().sub(origin);bend.addScaledVector(direction,-bend.dot(direction)).normalize();
+        const along=(upperLength*upperLength+distance*distance-lowerLength*lowerLength)/(2*distance);
+        const joint=origin.clone().addScaledVector(direction,along).addScaledVector(bend,Math.sqrt(Math.max(0,upperLength*upperLength-along*along)));
+        const upperWorld=new THREE.Quaternion().setFromUnitVectors(down,joint.clone().sub(origin).normalize());
+        root.quaternion.copy(root.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(upperWorld));
+        root.updateWorldMatrix(false,true);
+        const reachable=origin.clone().addScaledVector(direction,distance);
+        const lowerWorld=new THREE.Quaternion().setFromUnitVectors(down,reachable.sub(joint).normalize());
+        hinge.quaternion.copy(upperWorld.clone().invert().multiply(lowerWorld));
+        hinge.updateWorldMatrix(false,true);
+        return end.getWorldPosition(new THREE.Vector3());
+      }
+
+      setupLights();createArena();const character=createOrc();
+      // Sparse glowing motes create atmosphere; all positions are generated locally.
+      const motePositions=new Float32Array(65*3),random=seededRandom(7);
+      for(let i=0;i<65;i++){motePositions[i*3]=(random()-.5)*10;motePositions[i*3+1]=random()*6;motePositions[i*3+2]=(random()-.5)*7-2;}
+      const moteGeo=new THREE.BufferGeometry();moteGeo.setAttribute('position',new THREE.BufferAttribute(motePositions,3));
+      const motes=new THREE.Points(moteGeo,new THREE.PointsMaterial({color:0xabb87c,size:.018,transparent:true,opacity:.45,depthWrite:false}));scene.add(motes);
+
+      let mobileLayout=innerWidth<=650;
+      function resetView(){
+        camera.position.sub(shakeOffset);shakeOffset.set(0,0,0);shakeTime=0;
+        const mobile=innerWidth<=650;
+        camera.position.set(mobile?6.8:5.2,mobile?5.1:4.1,mobile?12:9.7);
+        controls.target.set(0,mobile?1.65:1.72,0);controls.update();controls.saveState();
+      }
+      function resize(){
+        const mobile=innerWidth<=650;
+        if(mobile!==mobileLayout){mobileLayout=mobile;resetView();}
+        camera.aspect=innerWidth/innerHeight;
+        camera.fov=innerWidth<=650?46:36;
+        controls.minDistance=innerWidth<=650?9:5.6;controls.maxDistance=innerWidth<=650?20:14;
+        camera.setViewOffset(innerWidth,innerHeight,innerWidth<=650?-innerWidth*.085:-innerWidth*.06,innerWidth<=650?-innerHeight*.045:0,innerWidth,innerHeight);
+        camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+      }
+      resetView();resize();addEventListener('resize',()=>{resize();});
+      const attackBtn=document.getElementById('attackBtn'),status=document.getElementById('status');
+      function prepareAudio(){if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(Audio)audioContext=new Audio();}if(audioContext?.state==='suspended')audioContext.resume().catch(()=>{});}
+      function thud(){
+        if(!soundOn||!audioContext)return;
+        const now=audioContext.currentTime,osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='triangle';osc.frequency.setValueAtTime(145,now);osc.frequency.exponentialRampToValueAtTime(38,now+.19);
+        gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.4,now+.006);gain.gain.exponentialRampToValueAtTime(.0001,now+.3);osc.connect(gain).connect(audioContext.destination);osc.start(now);osc.stop(now+.31);osc.onended=()=>{osc.disconnect();gain.disconnect();};
+        const buffer=audioContext.createBuffer(1,audioContext.sampleRate*.16,audioContext.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,3);
+        const source=audioContext.createBufferSource(),noiseGain=audioContext.createGain();source.buffer=buffer;noiseGain.gain.value=.15;source.connect(noiseGain).connect(audioContext.destination);source.start();source.onended=()=>{source.disconnect();noiseGain.disconnect();};
+      }
+      function playAttack(){
+        if(isAttacking)return;
+        if(soundOn)prepareAudio();isAttacking=true;attackTime=0;didImpact=false;attackBtn.disabled=true;status.textContent='WINDING UP';
+      }
+      function setupUI(){
+        attackBtn.addEventListener('click',playAttack);
+        addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!(e.target instanceof HTMLButtonElement)){e.preventDefault();playAttack();}});
+        document.getElementById('soundBtn').addEventListener('click',e=>{soundOn=!soundOn;if(soundOn)prepareAudio();const b=e.currentTarget;b.setAttribute('aria-pressed',soundOn);b.setAttribute('aria-label',soundOn?'Mute sound':'Enable sound');b.title=soundOn?'Mute sound':'Enable sound';b.innerHTML=soundOn?'<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4ZM16 9l5 6m0-6-5 6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';});
+        document.getElementById('rotateBtn').addEventListener('click',e=>{controls.autoRotate=!controls.autoRotate;const b=e.currentTarget;b.setAttribute('aria-pressed',controls.autoRotate);b.setAttribute('aria-label',controls.autoRotate?'Stop auto rotation':'Enable auto rotation');b.title=controls.autoRotate?'Stop auto rotation':'Auto rotate';});
+        document.getElementById('resetBtn').addEventListener('click',()=>{controls.autoRotate=false;const b=document.getElementById('rotateBtn');b.setAttribute('aria-pressed','false');b.setAttribute('aria-label','Enable auto rotation');b.title='Auto rotate';resetView();});
+      }
+      setupUI();
+      const restPose={rootY:0,rootZ:0,hipX:0,hipY:0,hipZ:0,torsoX:0,torsoY:0,torsoZ:0,headX:0,headY:0,leftX:0,leftZ:0,leftElbow:0,leftWrist:0,stepZ:0,stepLift:0,handY:1.68,handZ:.65,axeAngle:.14,bladeRoll:-.55};
+      const windup={rootY:-.06,rootZ:-.10,hipX:-.04,hipY:.25,hipZ:.025,torsoX:-.18,torsoY:.25,torsoZ:.08,headX:.14,headY:-.30,leftX:-.55,leftZ:.25,leftElbow:-.60,leftWrist:.12,stepZ:.27,handY:3.12,handZ:.48,axeAngle:-1.15,bladeRoll:0};
+      const strike={rootY:-.13,rootZ:.16,hipX:.09,hipY:-.23,hipZ:-.025,torsoX:.26,torsoY:-.28,torsoZ:-.06,headX:-.14,headY:.28,leftX:.65,leftZ:.20,leftElbow:-.35,leftWrist:-.15,stepZ:.30,handY:1.94,handZ:1.09,axeAngle:1.72,bladeRoll:0};
+      const impactTime=.67,attackDuration=1.36;
+      const keyframes=[
+        {t:0,...restPose},
+        {t:.16,...restPose,rootY:-.08,rootZ:-.05,hipY:.16,hipX:-.04,torsoX:-.10,torsoY:.18,torsoZ:.04,headX:.04,headY:-.12,leftX:-.28,leftZ:.10,leftElbow:-.30,stepZ:.10,stepLift:.11,handY:2.05,handZ:.70,axeAngle:-.35,bladeRoll:-.18},
+        {t:.46,...restPose,...windup},
+        {t:impactTime,...restPose,...strike},
+        // Brief hit-stop gives the blade contact weight before the follow-through.
+        {t:.715,...restPose,...strike},
+        {t:.84,...restPose,...strike,rootY:-.16,rootZ:.20,hipY:-.30,torsoX:.33,torsoY:-.34,leftX:.80,leftZ:.10,leftElbow:-.25,handY:1.64,handZ:.93,axeAngle:2.13},
+        {t:1.10,...restPose,rootY:-.07,rootZ:.08,hipY:-.10,torsoX:.10,torsoY:-.10,headX:-.04,leftX:.22,leftElbow:-.20,stepZ:.12,stepLift:.07,handY:1.70,handZ:.79,axeAngle:.60,bladeRoll:-.18},
+        {t:attackDuration,...restPose}
+      ];
+      const easeOut=t=>1-Math.pow(1-t,3),easeIn=t=>t*t*t,easeInOut=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+      function samplePose(t){
+        let i=0;while(i<keyframes.length-2&&t>keyframes[i+1].t)i++;
+        const a=keyframes[i],b=keyframes[i+1],u=THREE.MathUtils.clamp((t-a.t)/(b.t-a.t),0,1);
+        const f=(i===1?easeOut:i===2?easeIn:easeInOut)(u),pose={};
+        for(const k of Object.keys(restPose))pose[k]=THREE.MathUtils.lerp(a[k],b[k],f);
+        return pose;
+      }
+      const gripOffset=new THREE.Vector3(0,-.015,.105);
+      const axeMountInverse=character.axe.quaternion.clone().invert();
+      function applyPose(v){
+        const {orc,hips,torso,head,legs,rightArmGroup:arm,leftArmGroup:left,elbow,hand,animated}=character;
+        animated.forEach(g=>{g.rotation.copy(g.userData.rest.rotation);g.position.copy(g.userData.rest.position);g.scale.copy(g.userData.rest.scale);});
+        orc.position.y+=v.rootY;orc.position.z+=v.rootZ;
+        hips.rotation.set(v.hipX,v.hipY,v.hipZ);
+        torso.rotation.set(v.torsoX,v.torsoY,v.torsoZ);
+        head.rotation.set(v.headX,v.headY,0);
+        left.rotation.x+=v.leftX;left.rotation.z+=v.leftZ;
+        left.userData.elbow.rotation.x+=v.leftElbow;left.userData.hand.rotation.z+=v.leftWrist;
+        orc.updateMatrixWorld(true);
+        const footTargets=legs.map((leg,i)=>{
+          const foot=leg.userData.footAnchor.clone();
+          if(i===1){foot.z+=v.stepZ;foot.y+=v.stepLift;}return foot;
+        });
+        // Lower the pelvis enough to reach both planted feet during the twist.
+        // This avoids stretching the legs or letting a boot skate off the floor.
+        let settle=0;
+        legs.forEach((leg,i)=>{
+          const origin=leg.getWorldPosition(new THREE.Vector3()),foot=footTargets[i];
+          const lateral=(origin.x-foot.x)**2+(origin.z-foot.z)**2;
+          const verticalReach=Math.sqrt(Math.max(0,.869**2-lateral));
+          settle=Math.max(settle,origin.y-foot.y-verticalReach);
+        });
+        orc.position.y-=settle;orc.updateMatrixWorld(true);
+        for(let i=0;i<legs.length;i++){
+          const leg=legs[i],foot=footTargets[i];
+          const pole=foot.clone().add(new THREE.Vector3(0,1,1.5));
+          solveLimb(leg,leg.userData.knee,leg.userData.ankle,.43,.44,foot,pole);
+          const footYaw=i===1?v.stepZ*.3:v.hipY*.35;
+          const footOrientation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),footYaw);
+          leg.userData.ankle.quaternion.copy(leg.userData.knee.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(footOrientation));
+        }
+        // The chop follows one world-space vertical plane. The head's velocity
+        // lies in the blade plane, so the sharp outer edge leads, never its face.
+        const s=Math.sin(v.axeAngle),c=Math.cos(v.axeAngle);
+        const shaft=new THREE.Vector3(0,c,s),edge=new THREE.Vector3(0,-s,c);
+        const normal=new THREE.Vector3().crossVectors(edge,shaft);
+        const axeOrientation=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(edge,shaft,normal));
+        axeOrientation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),v.bladeRoll));
+        const handOrientation=axeOrientation.clone().multiply(axeMountInverse);
+        const grip=new THREE.Vector3(-.98,v.handY+v.rootY,v.handZ+v.rootZ);
+        const handTarget=grip.clone().sub(gripOffset.clone().applyQuaternion(handOrientation));
+        solveLimb(arm,elbow,hand,.66,.63,handTarget,new THREE.Vector3(-1.65,2.25+v.rootY,.30+v.rootZ));
+        hand.quaternion.copy(elbow.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(handOrientation));
+        orc.updateMatrixWorld(true);
+      }
+      function impact(){
+        character.orc.updateMatrixWorld(true);
+        const origin=character.axe.userData.edge.getWorldPosition(new THREE.Vector3());
+        const count=reducedMotion?14:65,positions=new Float32Array(count*3),velocities=[];
+        for(let i=0;i<count;i++){positions.set([origin.x,origin.y,origin.z],i*3);velocities.push(new THREE.Vector3((Math.random()-.5)*5,Math.random()*3.8+.8,(Math.random()-.5)*5));}
+        const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+        const burst=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffcd7b,size:.055,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(burst);effects.push({object:burst,age:0,velocities});
+        const ring=mesh(scene,new THREE.RingGeometry(.14,.19,40),mat(0xffcf88,0,1,{transparent:true,opacity:.8,side:THREE.DoubleSide,emissive:0xffa242,emissiveIntensity:1.8,depthWrite:false}),origin.x,origin.y,origin.z);ring.lookAt(camera.position);ring.castShadow=false;effects.push({object:ring,age:0});
+        if(!reducedMotion){shakeTime=.16;const flash=document.getElementById('flash');flash.style.transition='none';flash.style.opacity='.07';requestAnimationFrame(()=>{flash.style.transition='opacity .22s';flash.style.opacity='0';});}thud();
+      }
+      function updateAnimation(dt){
+        if(isAttacking){
+          attackTime=Math.min(attackTime+dt,attackDuration);
+          if(attackTime>=impactTime&&!didImpact){
+            // Evaluate the exact contact pose even when a frame skips the marker.
+            applyPose(samplePose(impactTime));impact();didImpact=true;status.textContent='RECOVERING';
+          }
+          applyPose(samplePose(attackTime));
+          if(attackTime>=.46&&attackTime<impactTime)status.textContent='UNLEASHING THE STRIKE';
+          if(attackTime>=attackDuration){isAttacking=false;attackBtn.disabled=false;status.textContent='READY FOR BATTLE';}
+        }else{
+          const idle={...restPose};
+          if(!reducedMotion){idle.rootY=Math.sin(time*1.8)*.005;idle.torsoX=Math.sin(time*1.8)*.009;idle.handY+=Math.sin(time*1.8)*.012;idle.leftZ=Math.sin(time*1.8+.8)*.016;}
+          applyPose(idle);
+        }
+        for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.age+=dt;e.object.material.opacity=Math.max(0,1-e.age/.55);
+          if(e.velocities){const p=e.object.geometry.attributes.position;for(let j=0;j<e.velocities.length;j++){const vel=e.velocities[j];vel.y-=8*dt;p.setXYZ(j,p.getX(j)+vel.x*dt,p.getY(j)+vel.y*dt,p.getZ(j)+vel.z*dt);}p.needsUpdate=true;}else{e.object.scale.setScalar(1+e.age*7);e.object.lookAt(camera.position);}
+          if(e.age>=.55){scene.remove(e.object);e.object.geometry.dispose();e.object.material.dispose();effects.splice(i,1);}
+        }
+        if(!reducedMotion)motes.rotation.y=time*.012;
+      }
+      function animate(){
+        requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);time+=dt;
+        camera.position.sub(shakeOffset);shakeOffset.set(0,0,0);controls.update();updateAnimation(dt);
+        if(shakeTime>0){shakeTime=Math.max(0,shakeTime-dt);const amplitude=.055*shakeTime/.16;shakeOffset.set((Math.random()-.5)*amplitude,(Math.random()-.5)*amplitude,0);camera.position.add(shakeOffset);}
+        renderer.render(scene,camera);
+      }
+      document.getElementById('loading').classList.add('hidden');animate();
+    } catch(error) {
+      console.error(error);document.getElementById('loading').textContent='The warrior could not load. Check your internet connection and WebGL support, then reload.';document.getElementById('attackBtn').disabled=true;
+    }
+  </script>
+</body>
+</html>

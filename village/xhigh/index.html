@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skyhold Village</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #cfe6f7;
+        font-family: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        left: 16px;
+        bottom: 14px;
+        right: 16px;
+        pointer-events: none;
+        color: rgba(255, 255, 255, 0.92);
+        text-shadow: 0 1px 3px rgba(40, 30, 20, 0.45);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        transition: opacity 0.4s;
+      }
+      #hud.hidden {
+        opacity: 0;
+      }
+      #hud .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      #hud .title {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #hud .bar {
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.25);
+        overflow: hidden;
+      }
+      #hud .bar > div {
+        height: 100%;
+        width: 0;
+        background: rgba(255, 244, 214, 0.9);
+      }
+      #hud .keys {
+        opacity: 0.75;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <div class="row">
+        <span class="title">Skyhold</span>
+        <span class="keys">Space pause · ←/→ scrub · C free camera · D day cycle · H hide</span>
+        <span id="hud-time">0.0 / 60s</span>
+      </div>
+      <div class="bar"><div id="hud-bar"></div></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky Island Village</title>
+    <meta name="description" content="A seamlessly looping low-poly life simulation of a medieval castle and village on a floating sky island." />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #cfe4f1;
+      }
+      #app {
+        position: fixed;
+        inset: 0;
+      }
+      #app canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .vignette {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 58%, rgba(40, 24, 10, 0.22) 100%);
+      }
+      #debug {
+        position: fixed;
+        left: 12px;
+        top: 12px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: rgba(20, 16, 12, 0.6);
+        color: #f4ead8;
+        font: 12px/1.4 ui-monospace, Menlo, monospace;
+        white-space: pre;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div class="vignette"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
